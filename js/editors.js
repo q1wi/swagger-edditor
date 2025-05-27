@@ -458,52 +458,52 @@ function displayPropertiesForModel(properties, requiredArr) {
 
 // --- Endpoint Security ---
 function displaySecurityForEndpoint(securityReqs) {
-    const list = el('securityList');
-    list.innerHTML = '';
-    (securityReqs || []).forEach((req, index) => {
-        const reqDiv = create('div', { className: 'security-scheme-item', id: 'securityReqItem' + index });
-        let content =
-            '<div class="security-scheme-header" onclick="toggleDetailsDisplay(this)">' +
-            '    <div><span class="toggle-icon">▶</span><strong>Requirement ' + (index + 1) + '</strong></div>' +
-            '    <button class="btn btn-danger btn-sm" onclick="removeSecurityRequirementFromEndpoint(' + index + ', event)">Remove</button>' +
-            '</div>' +
-            '<div class="details" style="display:none;">';
-        for (const [name, scopes] of Object.entries(req)) {
-            const secDef = swaggerDoc.securityDefinitions[name];
-            content +=
-                '<div class="form-group">' +
-                '    <label>Scheme: ' + name + ' (Type: ' + (secDef?.type || 'Unknown') + ')</label>';
-            if (secDef?.type === 'oauth2') {
-                content += '<div class="enum-container" id="endpointScopeChipsContainer_' + index + '_' + name + '">';
-                (scopes || []).forEach(scope => { content += '<span class="enum-item">' + scope + ' <span class="remove-enum" onclick="this.parentElement.remove()">×</span></span>'; });
-                content += '</div>' +
-                           '<div class="enum-input-group">' +
-                           '    <input type="text" class="form-control enum-input" id="endpointScopeInput_' + index + '_' + name + '" placeholder="Add scope for ' + name + '">' +
-                           '    <button class="btn btn-secondary btn-sm" onclick="addScopeChipToEndpoint(this, ' + index + ', \'' + name + '\')">+ Add Scope</button>' +
-                           '</div>';
-            } else if (secDef?.type === 'apiKey' || secDef?.type === 'basic') {
-                content += ' <span>(No scopes applicable for this type)</span>';
+        const list = el('securityList');
+        list.innerHTML = '';
+        (securityReqs || []).forEach((req, index) => {
+            const schemeName = Object.keys(req)[0];
+            const scopes = req[schemeName] || []; // Ensure scopes is an array
+            const sDiv = create('div', { className: 'security-scheme-item', id: `securityReq${index}`});
+            sDiv.innerHTML = `
+                <div class="security-scheme-header" onclick="toggleDetailsDisplay(this)">
+                    <div><span class="toggle-icon">▶</span><strong>${schemeName || 'New Requirement'}</strong></div>
+                    <button class="btn btn-danger btn-sm" onclick="removeSecurityRequirementFromEndpoint(${index}, event)">Remove</button>
+                </div>
+                <div class="details" style="display:none;">
+                    <div class="form-group">
+                        <label>Security Scheme Name (defined in root securityDefinitions)</label>
+                        <input type="text" class="form-control" id="securitySchemeName${index}" value="${schemeName || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Scopes (for OAuth2, Basic etc.)</label>
+                        <div class="enum-container" id="securitySchemeScopesContainer${index}">
+                            <!-- Scopes chips will be rendered here -->
+                        </div>
+                        <div class="enum-input-group">
+                            <input type="text" class="form-control enum-input" id="securitySchemeScopeInput${index}" placeholder="Add scope">
+                            <button class="btn btn-secondary btn-sm" onclick="addScopeChipToEndpoint(this, ${index})">+ Add</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            list.appendChild(sDiv);
+
+            // Render existing scopes as chips
+            renderEnumEditor(el(`securitySchemeScopesContainer${index}`), scopes, `securitySchemeScopeInput${index}`); // Use contextPrefix for input if needed, here it's more direct
+
+            // Add Enter key listener for scope input
+            const scopeInput = el(`securitySchemeScopeInput${index}`);
+            if (scopeInput) {
+                scopeInput.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        const addButton = this.nextElementSibling; // The "+ Add" button
+                        if (addButton) addButton.click();
+                    }
+                });
             }
-            content += '</div>';
-        }
-        content += '</div></div>'; // Closing details and securityReqItem
-        reqDiv.innerHTML = content;
-        list.appendChild(reqDiv);
-        for (const [name] of Object.entries(req)) {
-             if (swaggerDoc.securityDefinitions[name]?.type === 'oauth2') {
-                const scopeInput = el('endpointScopeInput_' + index + '_' + name);
-                if (scopeInput) {
-                    scopeInput.addEventListener('keypress', function(event) { 
-                        if (event.key === 'Enter') { 
-                            addScopeChipToEndpoint(this.nextElementSibling, index, name); 
-                            event.preventDefault(); 
-                        }
-                    });
-                }
-            }
-        }
-    });
-}
+        });
+    }
 
 // --- Security Definition Editor Specifics ---
 function handleSecurityDefinitionTypeChange(selectElement) {
@@ -582,22 +582,33 @@ function collectEnumValuesFromChips(containerElementOrId) {
 }
 
 // --- Scope Chip for Endpoint Security ---
-function addScopeChipToEndpoint(buttonElement, securityReqIndex, schemeName) {
-    const inputField = el('endpointScopeInput_' + securityReqIndex + '_' + schemeName);
-    const container = el('endpointScopeChipsContainer_' + securityReqIndex + '_' + schemeName);
-    if (inputField && container && inputField.value.trim() !== '') {
-        const value = inputField.value.trim();
-        const existingChips = qa('.enum-item', container);
-        for (let chip of existingChips) { 
-            if (chip.textContent.slice(0, -2).trim() === value) { 
-                alert("Scope already exists for this requirement."); 
-                return; 
-            }
+function addScopeChipToEndpoint(buttonElement, securityReqIndex) {
+        const inputField = el(`securitySchemeScopeInput${securityReqIndex}`);
+        const container = el(`securitySchemeScopesContainer${securityReqIndex}`);
+
+        if (!inputField || !container) {
+            console.warn(`Scope input or container not found for security requirement index: ${securityReqIndex}`);
+            return;
         }
-        const chip = create('span', { className: 'enum-item', textContent: value });
-        const removeBtn = create('span', { className: 'remove-enum', textContent: ' ×', onclick: () => chip.remove() });
-        chip.appendChild(removeBtn);
-        container.appendChild(chip);
-        inputField.value = ''; inputField.focus();
+
+        const value = inputField.value.trim();
+        if (value) {
+            // Check for duplicates
+            const existingChips = qa('.enum-item', container);
+            for (let i = 0; i < existingChips.length; i++) {
+                if (existingChips[i].firstChild && existingChips[i].firstChild.textContent === value) {
+                    alert("Scope value already exists for this requirement.");
+                    inputField.value = '';
+                    inputField.focus();
+                    return;
+                }
+            }            const chip = create('span', { className: 'enum-item' }); // Re-use enum-item class for styling
+            chip.textContent = value;
+            const removeBtn = create('span', { className: 'remove-enum', textContent: '×' }); // Re-use remove-enum
+            removeBtn.onclick = () => chip.remove(); // Direct removal like other enum chips
+            chip.appendChild(removeBtn);
+            container.appendChild(chip);
+            inputField.value = '';
+            inputField.focus();
+        }
     }
-}

@@ -140,22 +140,18 @@ function removePropertyFromModel(propName, event) {
 }
 
 function addSecurityRequirementToEndpoint() {
-    if (!currentEndpoint) return; const endpoint = swaggerDoc.paths[currentEndpoint.path]?.[currentEndpoint.method]; if (!endpoint) return;
-    if (!endpoint.security) endpoint.security = [];
-    const availableSecDefs = Object.keys(swaggerDoc.securityDefinitions);
-    if (availableSecDefs.length === 0) { alert("No security definitions available. Add one first."); return; }
-    const secDefName = prompt('Enter name of security definition to apply (available: ' + availableSecDefs.join(', ') + '):'); // Corrected prompt
-    if (!secDefName || !swaggerDoc.securityDefinitions[secDefName]) { alert("Invalid or non-existent security definition name."); return; }
-    const newReq = {}; newReq[secDefName] = swaggerDoc.securityDefinitions[secDefName].type === 'oauth2' ? [] : [];
-    endpoint.security.push(newReq);
-    displaySecurityForEndpoint(endpoint.security);
-}
+        const endpoint = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method];
+        if (!endpoint.security) endpoint.security = [];
+        endpoint.security.push({ "newSchemeName": [] });
+        displaySecurityForEndpoint(endpoint.security);
+    }
 
 function removeSecurityRequirementFromEndpoint(index, event) {
-    event.stopPropagation(); if (!currentEndpoint) return; const endpoint = swaggerDoc.paths[currentEndpoint.path]?.[currentEndpoint.method];
-    if (!endpoint || !endpoint.security?.[index]) return;
-    if (confirm('Remove security requirement at index ' + index + '?')) { endpoint.security.splice(index, 1); displaySecurityForEndpoint(endpoint.security); } // Corrected confirm
-}
+        event.stopPropagation();
+        const endpoint = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method];
+        endpoint.security.splice(index, 1);
+        displaySecurityForEndpoint(endpoint.security);
+    }
 
 function addSecurityDefinition() {
     const name = prompt('Enter new security definition name (e.g., apiKey, myOAuth2):');
