@@ -166,7 +166,27 @@ function removePropertyFromModel(propName, event) {
 function addSecurityRequirementToEndpoint() {
         const endpoint = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method];
         if (!endpoint.security) endpoint.security = [];
-        endpoint.security.push({ "newSchemeName": [] });
+        // Prompt for scheme name or offer a dropdown of existing securityDefinitions
+        const availableSchemes = Object.keys(swaggerDoc.securityDefinitions || {});
+        let newSchemeName = prompt('Enter security scheme name (must exist in Security Definitions):', availableSchemes.length > 0 ? availableSchemes[0] : 'newSchemeName');
+        
+        if (!newSchemeName) {
+            alert("Scheme name cannot be empty.");
+            return;
+        }
+        newSchemeName = newSchemeName.trim();
+        if (!swaggerDoc.securityDefinitions[newSchemeName]) {
+            alert(`Scheme "${newSchemeName}" not found in Security Definitions. Please define it first.`);
+            return;
+        }
+
+        // Check if this scheme already exists for this endpoint
+        if (endpoint.security.some(req => req.hasOwnProperty(newSchemeName))) {
+            alert(`Security requirement for scheme "${newSchemeName}" already exists on this endpoint.`);
+            return;
+        }
+
+        endpoint.security.push({ [newSchemeName]: [] });
         displaySecurityForEndpoint(endpoint.security);
         // Setup auto-save for newly added security requirement fields
         setTimeout(() => {
@@ -179,8 +199,12 @@ function addSecurityRequirementToEndpoint() {
 function removeSecurityRequirementFromEndpoint(index, event) {
         event.stopPropagation();
         const endpoint = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method];
-        endpoint.security.splice(index, 1);
-        displaySecurityForEndpoint(endpoint.security);
+        if (endpoint.security && endpoint.security[index]) {
+            if (confirm('Remove this security requirement?')) {
+                endpoint.security.splice(index, 1);
+                displaySecurityForEndpoint(endpoint.security);
+            }
+        }
     }
 
 function addSecurityDefinition() {
@@ -259,7 +283,8 @@ function collectEndpointDataFromForm() {
         const schemaRef = schemaRefEl ? schemaRefEl.value : '';
         if (schemaRef) resp.schema = { $ref: schemaRef };
         qa('#responseHeadersContainer' + code + ' .header-item').forEach(hItem => {
-            const hName = hItem.id.substring('headerItem_' + code + '_'.length);
+            // Correctly extract header name from hItem.id
+            const hName = hItem.id.substring(('headerItem_' + code + '_').length);
             const hDescEl = el('headerDescription_' + code + '_' + hName);
             const hTypeEl = el('headerType_' + code + '_' + hName);
             const hDef = { 
@@ -269,15 +294,44 @@ function collectEndpointDataFromForm() {
             if (hDef.type === 'array') {
                 const hItemsTypeEl = el('headerItemsType_' + code + '_' + hName);
                 hDef.items = { type: hItemsTypeEl ? hItemsTypeEl.value : 'string' };
+                 // Potentially add format for array items if it's part of your UI for header items
+                const hItemsFormatEl = el('headerItemsFormat_' + code + '_' + hName); // Assuming such an ID exists
+                if (hItemsFormatEl && hItemsFormatEl.value) {
+                    hDef.items.format = hItemsFormatEl.value;
+                }
+            } else {
+                // Potentially add format for simple type headers if it's part of your UI
+                const hFormatEl = el('headerFormat_' + code + '_' + hName); // Assuming such an ID exists
+                if (hFormatEl && hFormatEl.value) {
+                    hDef.format = hFormatEl.value;
+                }
             }
-            resp.headers[hName] = hDef;
+            if(hName) { // Ensure hName is not empty
+                 resp.headers[hName] = hDef;
+            }
         }); 
         if(Object.keys(resp.headers).length === 0) delete resp.headers;
         data.responses[code] = resp;
     });
-    qa('#securityList .security-scheme-item').forEach((item, index) => {
-        const req = {}; const schemeNameEl = q('#securityReqItem' + index + ' .form-group label');
-        if (schemeNameEl) { const match = schemeNameEl.textContent.match(/Scheme: (\S+)/); if (match && match[1]) { const schemeName = match[1]; const secDef = swaggerDoc.securityDefinitions[schemeName]; if (secDef) { req[schemeName] = secDef.type === 'oauth2' ? collectEnumValuesFromChips('endpointScopeChipsContainer_' + index + '_' + schemeName) : []; data.security.push(req);}}}
+    qa('#securityList .security-scheme-item').forEach((itemElement, index) => {
+        const req = {};
+        const schemeNameInput = el('securitySchemeName' + index);
+        
+        if (schemeNameInput && schemeNameInput.value) {
+            const schemeName = schemeNameInput.value.trim();
+            if (schemeName) {
+                const secDef = swaggerDoc.securityDefinitions[schemeName];
+                if (secDef) {
+                    const scopes = (secDef.type === 'oauth2') 
+                                    ? collectEnumValuesFromChips('securitySchemeScopesContainer' + index) 
+                                    : [];
+                    req[schemeName] = scopes;
+                    data.security.push(req);
+                } else {
+                    console.warn(`Security definition "${schemeName}" not found for endpoint security requirement at index ${index}. This requirement will be skipped.`);
+                }
+            }
+        }
     });
     return data;
 }
@@ -304,15 +358,24 @@ function saveModel() {
     const modelDescription = el('modelDescription').value;
     if (!newModelName || !/^[a-zA-Z0-9_.-]+$/.test(newModelName)) { alert('Invalid model name.'); el('modelNameInput').value = oldModelName; return; }
     const properties = {}, required = [];    qa('#propertiesList .property-item').forEach(item => {
-        const propId = item.id.substring('propertyItem_'.length), currentPropName = el('propName_' + propId).value; if (!currentPropName) return;
-        const prop = { description: el('propDescription_' + propId).value }; if (el('propRequired_' + propId).checked) required.push(currentPropName);
-        const propType = el('propType_' + propId).value;
-        if (propType === 'schema') { const ref = el('propModelSelect_' + propId).value; if (ref) prop.$ref = ref; else prop.type = 'object'; }        else {
+        const propIdInput = q('input[id^="propName_"]', item); // Find the input field for the property name
+        if (!propIdInput) return;
+        const originalPropName = propIdInput.id.substring('propName_'.length); // This is the original name used for other element IDs
+        const currentPropName = propIdInput.value;  // This is the current (potentially edited) name
+
+        if (!currentPropName) return;
+
+        const prop = { description: el('propDescription_' + originalPropName).value }; 
+        if (el('propRequired_' + originalPropName).checked) required.push(currentPropName);
+        
+        const propType = el('propType_' + originalPropName).value;
+        if (propType === 'schema') { 
+            const ref = el('propModelSelect_' + originalPropName).value; 
+            if (ref) prop.$ref = ref; else prop.type = 'object'; 
+        } else {
             prop.type = propType;
-            // Handle default value
-            if (el('prop_' + propId + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + propId).value !== '') {
-                const defaultValue = el('propDefault_' + propId).value;
-                // Try to parse as appropriate type
+            if (el('prop_' + originalPropName + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + originalPropName).value !== '') {
+                const defaultValue = el('propDefault_' + originalPropName).value;
                 if (propType === 'number' || propType === 'integer') {
                     prop.default = propType === 'integer' ? parseInt(defaultValue) : parseFloat(defaultValue);
                 } else if (propType === 'boolean') {
@@ -321,10 +384,8 @@ function saveModel() {
                     prop.default = defaultValue;
                 }
             }
-            // Handle example value
-            if (el('prop_' + propId + 'ExampleGroup').style.display !== 'none' && el('propExample_' + propId).value !== '') {
-                const exampleValue = el('propExample_' + propId).value;
-                // Try to parse as appropriate type
+            if (el('prop_' + originalPropName + 'ExampleGroup').style.display !== 'none' && el('propExample_' + originalPropName).value !== '') {
+                const exampleValue = el('propExample_' + originalPropName).value;
                 if (propType === 'number' || propType === 'integer') {
                     prop.example = propType === 'integer' ? parseInt(exampleValue) : parseFloat(exampleValue);
                 } else if (propType === 'boolean') {
@@ -333,15 +394,15 @@ function saveModel() {
                     prop.example = exampleValue;
                 }
             }
-            if (el('prop_' + propId + 'FormatGroup').style.display !== 'none' && el('prop_' + propId + 'Format').value) prop.format = el('prop_' + propId + 'Format').value;
-            if (el('prop_' + propId + 'StringValidationsGroup').style.display !== 'none') { if(el('propPattern_' + propId).value) prop.pattern = el('propPattern_' + propId).value; if(el('propMinLength_' + propId).value) prop.minLength = parseInt(el('propMinLength_' + propId).value); if(el('propMaxLength_' + propId).value) prop.maxLength = parseInt(el('propMaxLength_' + propId).value); }
-            if (el('prop_' + propId + 'NumberValidationsGroup').style.display !== 'none') { if(el('propMinimum_' + propId).value) prop.minimum = parseFloat(el('propMinimum_' + propId).value); if(el('propMaximum_' + propId).value) prop.maximum = parseFloat(el('propMaximum_' + propId).value); }
+            if (el('prop_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('prop_' + originalPropName + 'Format').value) prop.format = el('prop_' + originalPropName + 'Format').value;
+            if (el('prop_' + originalPropName + 'StringValidationsGroup').style.display !== 'none') { if(el('propPattern_' + originalPropName).value) prop.pattern = el('propPattern_' + originalPropName).value; if(el('propMinLength_' + originalPropName).value) prop.minLength = parseInt(el('propMinLength_' + originalPropName).value); if(el('propMaxLength_' + originalPropName).value) prop.maxLength = parseInt(el('propMaxLength_' + originalPropName).value); }
+            if (el('prop_' + originalPropName + 'NumberValidationsGroup').style.display !== 'none') { if(el('propMinimum_' + originalPropName).value) prop.minimum = parseFloat(el('propMinimum_' + originalPropName).value); if(el('propMaximum_' + originalPropName).value) prop.maximum = parseFloat(el('propMaximum_' + originalPropName).value); }
             if (propType === 'array') {
-                prop.items = {}; const itemsType = el('propItemsType_' + propId).value;
-                if (itemsType === 'schema') { const ref = el('propItemsModelSelect_' + propId).value; if (ref) prop.items.$ref = ref; else prop.items.type = 'object'; }
-                else { prop.items.type = itemsType; if (el('propItems_' + propId + 'FormatGroup').style.display !== 'none' && el('propItems_' + propId + 'Format').value) prop.items.format = el('propItems_' + propId + 'Format').value; }
-                if (el('propItems_' + propId + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('propItemsEnumContainer_' + propId); if (en.length > 0) prop.items.enum = en; }
-            } else if (propType === 'string' && el('prop_' + propId + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('prop_' + propId + 'EnumContainer'); if (en.length > 0) prop.enum = en; }
+                prop.items = {}; const itemsType = el('propItemsType_' + originalPropName).value;
+                if (itemsType === 'schema') { const ref = el('propItemsModelSelect_' + originalPropName).value; if (ref) prop.items.$ref = ref; else prop.items.type = 'object'; }
+                else { prop.items.type = itemsType; if (el('propItems_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('propItems_' + originalPropName + 'Format').value) prop.items.format = el('propItems_' + originalPropName + 'Format').value; }
+                if (el('propItems_' + originalPropName + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('propItemsEnumContainer_' + originalPropName); if (en.length > 0) prop.items.enum = en; }
+            } else if (propType === 'string' && el('prop_' + originalPropName + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('prop_' + originalPropName + 'EnumContainer'); if (en.length > 0) prop.enum = en; }
         }
         properties[currentPropName] = prop;
     });
