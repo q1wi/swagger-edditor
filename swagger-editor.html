@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swagger Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="header">
+    <h1>Swagger Editor</h1>    <div class="file-controls">
+        <input type="file" id="fileInput" accept=".yaml,.yml" style="display: none;">
+        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">📁 Import YAML</button>
+        <button class="btn btn-success" onclick="exportYAML()">💾 Export YAML</button>
+        <button class="btn btn-primary" onclick="showPreview()">👁️ Preview YAML</button>
+        <button class="btn btn-info" onclick="copyYAMLToClipboard(this)">📋 Copy to Clipboard</button>
+        <button class="btn btn-primary" id="appBackButton" onclick="goBackInApp()" style="margin-left: 10px;" disabled>⬅️ Back</button>
+    </div>
+</div>
+
+<div class="container">
+    <div class="sidebar" id="sidebarPanel">
+        <div style="padding: 10px; border-bottom: 1px solid #ddd; position: relative;">
+            <input type="text" id="searchInput" class="form-control" placeholder="Search..." onkeyup="filterLists()">
+            <span id="clearSearchBtn" style="position: absolute; right: 20px; top: 50%; transform: translateY(-50%); cursor: pointer; display: none; font-weight: bold; font-size: 18px; color: #888;">×</span>
+        </div>
+        <div style="flex-grow: 1; overflow-y: auto;">
+            <div class="section">
+                <div class="section-header"><span>Endpoints</span><button class="btn btn-primary btn-sm" onclick="addEndpoint()">+ Add</button></div>
+                <div id="endpointsList"></div>
+            </div>
+            <div class="section">
+                <div class="section-header"><span>Models</span><button class="btn btn-primary btn-sm" onclick="addModel()">+ Add</button></div>
+                <div id="modelsList"></div>
+            </div>
+            <div class="section">
+                <div class="section-header"><span>Security Definitions</span><button class="btn btn-primary btn-sm" onclick="addSecurityDefinition()">+ Add</button></div>
+                <div id="securityDefinitionsList"></div>
+            </div>
+        </div>
+    </div>
+    <div id="resizeHandle"></div>
+    <div class="main-content" id="mainContentPanel">
+        <div class="tabs">
+            <div class="tab active" onclick="selectInfoTab(event)">General Info</div>
+            <div class="tab" onclick="selectEndpointTab(event)">Endpoint Editor</div>
+            <div class="tab" onclick="selectModelTab(event)">Model Editor</div>
+            <div class="tab" onclick="selectSecurityDefinitionTab(event)">Security Definition Editor</div>
+        </div>
+        <div id="infoTab" class="tab-content"><div class="info-form"><h2>API Information</h2><div class="form-group"><label>API Title</label><input type="text" class="form-control" id="apiTitle" placeholder="Your API Name"></div><div class="form-group"><label>Version</label><input type="text" class="form-control" id="apiVersion" placeholder="1.0.0"></div><div class="form-group"><label>Description</label><textarea class="form-control" id="apiDescription" placeholder="Description of your API"></textarea></div><div class="form-group"><label>Base Path</label><input type="text" class="form-control" id="apiBasePath" placeholder="/api/v1"></div><div class="form-group"><label>Host</label><input type="text" class="form-control" id="apiHost" placeholder="api.example.com"></div><button class="btn btn-primary" onclick="saveGeneralInfo()">Save Info</button></div></div>
+        <div id="endpointTab" class="tab-content hidden"><div id="endpointEditor"><div id="endpointEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select an endpoint or add a new one</p></div></div></div>
+        <div id="modelTab" class="tab-content hidden"><div id="modelEditor"><div id="modelEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select a model or add a new one</p></div></div></div>
+        <div id="securityDefinitionTab" class="tab-content hidden"><div id="securityDefinitionEditor"><div id="securityDefinitionEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select a security definition or add a new one</p></div></div></div>
+    </div>
+</div>
+
+<div id="previewModal" class="modal"><div class="modal-content"><div class="modal-header"><h2>YAML Preview</h2><span class="close" onclick="closePreview()">×</span></div><div class="modal-body"><pre id="yamlPreview"></pre></div></div></div>
+
+<script src="js/config.js"></script>
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/history.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/editors.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/file-yaml.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

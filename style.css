@@ -1,0 +1,89 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; overflow: hidden; }
+.header { background: #2c3e50; color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.header h1 { font-size: 24px; margin-bottom: 10px; }
+.file-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center;}
+.btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; transition: all 0.3s; }
+.btn:disabled { background-color: #ccc; cursor: not-allowed; }
+.btn-primary { background: #3498db; color: white; }
+.btn-primary:hover:not(:disabled) { background: #2980b9; }
+.btn-success { background: #27ae60; color: white; }
+.btn-success:hover:not(:disabled) { background: #229954; }
+.btn-danger { background: #e74c3c; color: white; }
+.btn-danger:hover:not(:disabled) { background: #c0392b; }
+.btn-info { background: #5bc0de; color: white; }
+.btn-info:hover:not(:disabled) { background: #31b0d5; }
+.container { display: flex; height: calc(100vh - 85px); }
+.sidebar {
+  width: 500px; min-width: 200px; max-width: 50%;
+  background: white; border-right: 1px solid #ddd;
+  display: flex; flex-direction: column;
+}
+#resizeHandle { width: 5px; background-color: #ccc; cursor: col-resize; height: 100%; }
+#resizeHandle:hover { background-color: #3498db; }
+.main-content { flex: 1; padding: 5px; overflow-y: auto; background-color: #f8f9fa; }
+.section { margin-bottom: 20px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #34495e; color: white; font-weight: bold; }
+.endpoint-item, .model-item, .security-definition-list-item { padding: 12px 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; background-color: white; }
+.endpoint-item:hover, .model-item:hover, .security-definition-list-item:hover { background: #f0f0f0; }
+.endpoint-item.active, .model-item.active, .security-definition-list-item.active { background: #e3f2fd; border-left: 3px solid #2196f3; }
+/* .endpoint-item-actions removed as buttons are moved */
+.method-badge { padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: bold; color: white; margin-right: 8px; }
+.method-get { background: #61affe; } .method-post { background: #49cc90; } .method-put { background: #fca130; } .method-delete { background: #f93e3e; } .method-patch { background: #50e3c2; }
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+.form-control, .form-select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; background-color: white; }
+.form-control:focus, .form-select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); }
+textarea.form-control { resize: vertical; min-height: 80px; }
+#infoTab > .info-form, #endpointEditorContent, #modelEditorContent, #securityDefinitionEditorContent { background: white; padding: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 5px; }
+
+.editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee;}
+.editor-header h2 { margin-bottom: 0; font-size: 1.5em; flex-grow: 1; }
+.editor-actions { display: flex; gap: 10px; }
+
+.parameters-container, .responses-container, #modelPropertiesContainer, .headers-container, .security-definition-container, .scopes-container /* Added */ {
+  background: #ffffff; padding: 15px; border-radius: 4px; margin-top: 15px; margin-bottom: 15px; border: 1px solid #e9ecef;
+}
+.parameter-item, .response-item, .property-item, .header-item, .security-scheme-item, .scope-item /* Added */ {
+  background: #f8f9fa; padding: 10px 15px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #dee2e6;
+}
+.parameter-item:last-child, .response-item:last-child, .property-item:last-child, .header-item:last-child, .security-scheme-item:last-child, .scope-item:last-child /* Added */ { margin-bottom: 0; }
+.enum-container, .array-items-config /* .scopes-container removed from here as it's styled above now */ { background: #e9ecef; padding: 10px; border-radius: 4px; margin-top: 10px; border: 1px solid #dee2e6;}
+.enum-item /* .scope-item removed from here */ { display: inline-block; background: #f8f9fa; padding: 4px 8px; margin: 2px; border-radius: 3px; font-size: 13px; }
+.enum-item .remove-enum, .scope-item .remove-scope { margin-left: 5px; cursor: pointer; color: #dc3545; font-weight: bold; }
+.enum-input-group, .scope-input-group { display: flex; gap: 5px; margin-top: 5px; }
+.enum-input, .scope-input { flex: 1; padding: 4px 8px; border: 1px solid #ddd; border-radius: 3px; font-size: 13px; }
+.parameter-header, .property-header, .response-header, .header-item-header, .security-scheme-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; cursor:pointer; }
+.parameter-header > div:first-child, .property-header > div:first-child, .response-header > div:first-child, .header-item-header > div:first-child, .security-scheme-header > div:first-child { display: flex; align-items: center; }
+.btn-sm { padding: 4px 8px; font-size: 12px; }
+.hidden { display: none; }
+.tabs { display: flex; border-bottom: 2px solid #ddd; margin-bottom: 0; margin-left:5px; margin-right:5px; }
+.tab { padding: 10px 20px; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.3s; color: #555; margin-bottom: -2px; }
+.tab:hover { background: #f0f2f5; color: #333; }
+.tab.active { border-bottom-color: #3498db; color: #3498db; font-weight: 500; background-color: white; border-top-left-radius: 4px; border-top-right-radius: 4px; border-left: 1px solid #ddd; border-right: 1px solid #ddd; border-top: 1px solid #ddd; }
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+.modal-content { position: relative; background: white; margin: 50px auto; width: 90%; max-width: 800px; max-height: 80vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 10px 20px; border-bottom: 1px solid #eee; background: white; position: sticky; top: 0; z-index: 1001; border-radius: 8px 8px 0 0; }
+.modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+.close { font-size: 28px; cursor: pointer; color: #999; }
+.close:hover { color: #333; }
+pre { background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 13px; line-height: 1.5; }
+select.form-control, select.form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; }
+.delete-btn-editor { color: white; /* For editor panel delete button */ }
+.clone-btn-editor { color: white; /* For editor panel clone button */ }
+.toggle-icon { margin-right: 8px; font-size: 12px; transition: transform 0.2s ease-in-out; display: inline-block; width: 1em; text-align: center; }
+.expanded .toggle-icon { transform: rotate(90deg); }
+.details { padding-left: 20px; border-top: 1px solid #eee; margin-top: 10px; padding-top: 10px; }
+.parameter-item > .parameter-header, .response-item > .response-header, .header-item > .header-item-header, .security-scheme-item > .security-scheme-header { padding: 0; margin-bottom: 0; border-bottom: none; }
+.parameter-item.expanded > .parameter-header, .response-item.expanded > .response-header, .header-item.expanded > .header-item-header, .security-scheme-item.expanded > .security-scheme-header { margin-bottom: 10px; }
+.form-group-inline { display: flex; gap: 10px; align-items: center; }
+.form-group-inline label { margin-bottom: 0; }
+.form-group-inline .form-control { width: auto; flex-grow: 1; }
+.sub-section-header { font-weight: bold; margin-top: 15px; margin-bottom: 10px; font-size: 0.9em; color: #555; }
+.scope-item .form-group-inline { margin-bottom: 5px; } /* For spacing within scope items */
+.sidebar input[type="text"].form-control {
+  padding-right: 30px; /* Make space for the X button */
+}
+#clearSearchBtn:hover {
+  color: #333;
+}

@@ -1,0 +1,1 @@
+// This file is intentionally left blank. All functionality has been moved to individual files in the js/ directory.
