@@ -299,9 +299,32 @@ function saveModelSilent() {
                 prop.$ref = ref;
             } else {
                 prop.type = 'object';
-            }
-        } else {
+            }        } else {
             prop.type = propType;
+            // Handle default value
+            if (el('prop_' + propId + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + propId).value !== '') {
+                const defaultValue = el('propDefault_' + propId).value;
+                // Try to parse as appropriate type
+                if (propType === 'number' || propType === 'integer') {
+                    prop.default = propType === 'integer' ? parseInt(defaultValue) : parseFloat(defaultValue);
+                } else if (propType === 'boolean') {
+                    prop.default = defaultValue.toLowerCase() === 'true';
+                } else {
+                    prop.default = defaultValue;
+                }
+            }
+            // Handle example value
+            if (el('prop_' + propId + 'ExampleGroup').style.display !== 'none' && el('propExample_' + propId).value !== '') {
+                const exampleValue = el('propExample_' + propId).value;
+                // Try to parse as appropriate type
+                if (propType === 'number' || propType === 'integer') {
+                    prop.example = propType === 'integer' ? parseInt(exampleValue) : parseFloat(exampleValue);
+                } else if (propType === 'boolean') {
+                    prop.example = exampleValue.toLowerCase() === 'true';
+                } else {
+                    prop.example = exampleValue;
+                }
+            }
             if (el('prop_' + propId + 'FormatGroup').style.display !== 'none' && el('prop_' + propId + 'Format').value) {
                 prop.format = el('prop_' + propId + 'Format').value;
             }

@@ -201,7 +201,7 @@ function handleTypeChange(selectElement) {
     let isParameterContext = false, isPropertyContext = false, isItemsContext = false;
 
     if (elementId.startsWith('paramType')) { isParameterContext = true; identifier = elementId.substring('paramType'.length); baseIdForControls = 'param' + identifier; }
-    else if (elementId.match(/^param\\d+ItemsType$/)) { isParameterContext = true; isItemsContext = true; identifier = elementId.match(/^param(\\d+)ItemsType$/)[1]; baseIdForControls = 'param' + identifier + 'Items'; }
+    else if (elementId.match(/^param\d+ItemsType$/)) { isParameterContext = true; isItemsContext = true; identifier = elementId.match(/^param(\d+)ItemsType$/)[1]; baseIdForControls = 'param' + identifier + 'Items'; } // Poprawiony regex, aby pasował do HTML
     else if (elementId.startsWith('propType_')) { isPropertyContext = true; identifier = elementId.substring('propType_'.length); baseIdForControls = 'prop_' + identifier; }
     else if (elementId.startsWith('propItemsType_')) { isPropertyContext = true; isItemsContext = true; identifier = elementId.substring('propItemsType_'.length); baseIdForControls = 'propItems_' + identifier; }
     else { return; }
@@ -212,7 +212,7 @@ function handleTypeChange(selectElement) {
     if (isParameterContext) {
         const paramInVal = el('paramIn' + identifier)?.value;
         const isBodyParam = paramInVal === 'body';
-        if (!isItemsContext) {
+        if (!isItemsContext) { // Main parameter type
             showHide(baseIdForControls + 'SchemaGroup', selectedType === 'schema' || isBodyParam);
             showHide(baseIdForControls + 'FormatGroup', !isBodyParam && ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema');
             showHide(baseIdForControls + 'EnumGroup', !isBodyParam && selectedType === 'string' && selectedType !== 'schema');
@@ -221,39 +221,75 @@ function handleTypeChange(selectElement) {
             showHide(baseIdForControls + 'NumberValidationsGroup', !isBodyParam && ['number', 'integer'].includes(selectedType) && selectedType !== 'schema');
             showHide(baseIdForControls + 'DefaultGroup', !isBodyParam);
             showHide(baseIdForControls + 'ExampleGroup', !isBodyParam);
+            
             const formatSelect = el(baseIdForControls + 'Format');
-            if (formatSelect && !isBodyParam && selectedType !== 'schema') formatSelect.innerHTML = getFormatOptions(selectedType);
+            if (formatSelect && !isBodyParam && selectedType !== 'schema') {
+                let currentFormat = '';
+                // Pobierz aktualny format z swaggerDoc dla parametru
+                if (currentEndpoint && swaggerDoc.paths[currentEndpoint.path]?.[currentEndpoint.method]?.parameters?.[identifier]) {
+                    currentFormat = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method].parameters[identifier].format || '';
+                }
+                formatSelect.innerHTML = getFormatOptions(selectedType, currentFormat);
+            }
+
             if (selectedType === 'array' && !isBodyParam && selectedType !== 'schema') { 
                 const itemsTypeSelect = el(baseIdForControls + 'ItemsType'); 
                 if (itemsTypeSelect) handleTypeChange(itemsTypeSelect); 
             }
-        } else { // isItemsContext
-            showHide(baseIdForControls + 'ModelGroup', selectedType === 'schema');
-            showHide(baseIdForControls + 'EnumGroup', selectedType === 'string' && selectedType !== 'schema');
-            showHide(baseIdForControls + 'FormatGroup', ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema');
-            const itemsFormatSelect = el(baseIdForControls + 'Format');
-            if (itemsFormatSelect && selectedType !== 'schema') itemsFormatSelect.innerHTML = getFormatOptions(selectedType);
+        } else { // Parameter items type
+            showHide(baseIdForControls + 'ModelGroup', selectedType === 'schema'); // np. paramXItemsModelGroup
+            showHide(baseIdForControls + 'EnumGroup', selectedType === 'string' && selectedType !== 'schema'); // np. paramXItemsEnumGroup
+            showHide(baseIdForControls + 'FormatGroup', ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema'); // np. paramXItemsFormatGroup
+            
+            const itemsFormatSelect = el(baseIdForControls + 'Format'); // np. paramXItemsFormat
+            if (itemsFormatSelect && selectedType !== 'schema') {
+                let currentItemsFormat = '';
+                // Pobierz aktualny format z swaggerDoc dla elementu tablicy parametru
+                if (currentEndpoint && swaggerDoc.paths[currentEndpoint.path]?.[currentEndpoint.method]?.parameters?.[identifier]?.items) {
+                    currentItemsFormat = swaggerDoc.paths[currentEndpoint.path][currentEndpoint.method].parameters[identifier].items.format || '';
+                }
+                itemsFormatSelect.innerHTML = getFormatOptions(selectedType, currentItemsFormat);
+            }
         }
-    } else if (isPropertyContext) {
-        if (!isItemsContext) {
+    } else if (isPropertyContext) {        
+        if (!isItemsContext) { // Main property type
             showHide('prop_' + identifier + 'ModelGroup', selectedType === 'schema');
             showHide('prop_' + identifier + 'FormatGroup', ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema');
-            showHide('propEnumGroup_' + identifier, selectedType === 'string' && selectedType !== 'schema');
-            showHide('propItemsConfig_' + identifier, selectedType === 'array' && selectedType !== 'schema');
+            showHide('prop_' + identifier + 'DefaultGroup', selectedType !== 'schema');
+            showHide('prop_' + identifier + 'ExampleGroup', selectedType !== 'schema');
+            showHide('prop_' + identifier + 'EnumGroup', selectedType === 'string' && selectedType !== 'schema');
+            showHide('propItemsConfig_' + identifier, selectedType === 'array' && selectedType !== 'schema');            
             showHide('prop_' + identifier + 'StringValidationsGroup', selectedType === 'string' && selectedType !== 'schema');
-            showHide('prop_' + identifier + 'NumberValidationsGroup', ['number', 'integer'].includes(selectedType) && selectedType !== 'schema'); // Added this line
+            showHide('prop_' + identifier + 'NumberValidationsGroup', ['number', 'integer'].includes(selectedType) && selectedType !== 'schema');
+            
             const formatSelect = el('prop_' + identifier + 'Format');
-            if (formatSelect && selectedType !== 'schema') formatSelect.innerHTML = getFormatOptions(selectedType);
+            if (formatSelect && selectedType !== 'schema') {
+                let currentFormat = '';
+                // Pobierz aktualny format z swaggerDoc dla właściwości
+                if (currentModel && swaggerDoc.definitions[currentModel]?.properties?.[identifier]) {
+                    currentFormat = swaggerDoc.definitions[currentModel].properties[identifier].format || '';
+                }
+                formatSelect.innerHTML = getFormatOptions(selectedType, currentFormat);
+            }
+
             if (selectedType === 'array' && selectedType !== 'schema') { 
                 const itemsTypeSelect = el('propItemsType_' + identifier); 
                 if (itemsTypeSelect) handleTypeChange(itemsTypeSelect); 
             }
-        } else { // isItemsContext for property
-            showHide(baseIdForControls + 'ModelGroup', selectedType === 'schema');
-            showHide(baseIdForControls + 'EnumGroup', selectedType === 'string' && selectedType !== 'schema');
-            showHide(baseIdForControls + 'FormatGroup', ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema');
-            const itemsFormatSelect = el(baseIdForControls + 'Format');
-            if (itemsFormatSelect && selectedType !== 'schema') itemsFormatSelect.innerHTML = getFormatOptions(selectedType);
+        } else { // Property items type
+            showHide(baseIdForControls + 'ModelGroup', selectedType === 'schema'); // np. propItems_XModelGroup
+            showHide(baseIdForControls + 'EnumGroup', selectedType === 'string' && selectedType !== 'schema'); // np. propItems_XEnumGroup
+            showHide(baseIdForControls + 'FormatGroup', ['string', 'number', 'integer'].includes(selectedType) && selectedType !== 'schema'); // np. propItems_XFormatGroup
+
+            const itemsFormatSelect = el(baseIdForControls + 'Format'); // np. propItems_XFormat
+            if (itemsFormatSelect && selectedType !== 'schema') {
+                let currentItemsFormat = '';
+                // Pobierz aktualny format z swaggerDoc dla elementu tablicy właściwości
+                if (currentModel && swaggerDoc.definitions[currentModel]?.properties?.[identifier]?.items) {
+                    currentItemsFormat = swaggerDoc.definitions[currentModel].properties[identifier].items.format || '';
+                }
+                itemsFormatSelect.innerHTML = getFormatOptions(selectedType, currentItemsFormat);
+            }
         }
     }
 }
@@ -408,28 +444,55 @@ function displayPropertiesForModel(properties, requiredArr) {
         const pDiv = create('div', { className: 'property-item', id: 'propertyItem_' + propName });
         const propTypeForOptions = prop.$ref ? 'schema' : (prop.type || 'string');
         let itemsTypeForOptions = prop.items ? (prop.items.$ref ? 'schema' : (prop.items.type || 'string')) : 'string';
+
+        // Calculate typeForFormatList for the main property format dropdown
+        let typeForFormatList = '';
+        if (prop.$ref) {
+            typeForFormatList = ''; // No formats for direct schema refs
+        } else if (['string', 'number', 'integer'].includes(prop.type)) {
+            typeForFormatList = prop.type;
+        } else if (prop.format) { // If type is not explicitly string/number/integer (or is undefined), try to infer from format
+            if ((commonFormats.string || []).includes(prop.format)) typeForFormatList = 'string';
+            else if ((commonFormats.number || []).includes(prop.format)) typeForFormatList = 'number';
+            else if ((commonFormats.integer || []).includes(prop.format)) typeForFormatList = 'integer';
+        }
+
+        // Calculate itemsTypeForFormatList for array items format dropdown
+        let itemsTypeForFormatList = '';
+        if (prop.items) {
+            if (prop.items.$ref) {
+                itemsTypeForFormatList = ''; // No formats for direct schema refs in items
+            } else if (['string', 'number', 'integer'].includes(prop.items.type)) {
+                itemsTypeForFormatList = prop.items.type;
+            } else if (prop.items.format) { // If item type is not explicitly string/number/integer (or is undefined), try to infer from item format
+                if ((commonFormats.string || []).includes(prop.items.format)) itemsTypeForFormatList = 'string';
+                else if ((commonFormats.number || []).includes(prop.items.format)) itemsTypeForFormatList = 'number';
+                else if ((commonFormats.integer || []).includes(prop.items.format)) itemsTypeForFormatList = 'integer';
+            }
+        }
+
         const modelRefName = prop.$ref?.substring('#/definitions/'.length) || '';
         const itemsModelRefName = prop.items?.$ref?.substring('#/definitions/'.length) || '';
+
         pDiv.innerHTML =
-            '<div class="property-header" onclick="toggleDetailsDisplay(this)">' +
+            '<div class=\"property-header\" onclick=\"toggleDetailsDisplay(this)\">' +
             '    <div><span class="toggle-icon">▶</span><strong>' + propName + '</strong></div>' +
             '    <button class="btn btn-danger btn-sm" onclick="removePropertyFromModel(\'' + propName + '\', event)">Remove</button>' +
             '</div>' +
             '<div class="details" style="display:none;">' +
-            '    <div class="form-group"><label>Name</label><input type="text" class="form-control" id="propName_' + propName + '" value="' + propName + '"></div>' +
-            '    <div class="form-group"><label>Description</label><textarea class="form-control" id="propDescription_' + propName + '">' + (prop.description || '') + '</textarea>' +
+            '    <div class="form-group"><label>Name</label><input type="text" class="form-control" id="propName_' + propName + '" value="' + propName + '"></div>' +            '    <div class="form-group"><label>Description</label><textarea class="form-control" id="propDescription_' + propName + '">' + (prop.description || '') + '</textarea>' +
             '    <div class="form-group"><label><input type="checkbox" id="propRequired_' + propName + '" ' + (requiredArr.includes(propName) ? 'checked' : '') + '> Required</label></div>' +
-            '    <div class="form-group"><label>Type</label><select class="form-select" id="propType_' + propName + '" onchange="handleTypeChange(this)">' + getTypeOptions(propTypeForOptions, true) + '</select></div>' +
-            '    <div class="form-group" id="prop_' + propName + 'FormatGroup"><label>Format</label><select class="form-select" id="prop_' + propName + 'Format">' + getFormatOptions(prop.type, prop.format || '') + '</select></div>' +
-            '    <div class="form-group" id="prop_' + propName + 'ModelGroup"><label>Schema (Model Ref)</label><div style="display:flex; gap:5px;"><select class="form-select" id="propModelSelect_' + propName + '">' + getModelOptions(modelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnProp_' + propName + '" onclick="goToModel(\'propModelSelect_' + propName + '\')" style="display:' + (modelRefName ? 'inline-block' : 'none') + '">➡️</button></div></div>' +
+            '    <div class="form-group" id="prop_' + propName + 'DefaultGroup"><label>Default Value</label><input type="text" class="form-control" id="propDefault_' + propName + '" value="' + (prop.default !== undefined ? String(prop.default) : '') + '"></div>' +
+            '    <div class="form-group" id="prop_' + propName + 'ExampleGroup"><label>Example</label><input type="text" class="form-control" id="propExample_' + propName + '" value="' + (prop.example !== undefined ? String(prop.example) : '') + '"></div>' +            '    <div class="form-group"><label>Type</label><select class="form-select" id="propType_' + propName + '" onchange="handleTypeChange(this)">' + getTypeOptions(propTypeForOptions, true) + '</select></div>'+
+            '    <div class="form-group" id="prop_' + propName + 'FormatGroup"><label>Format</label><select class="form-select" id="prop_' + propName + 'Format">' + getFormatOptions(typeForFormatList, prop.format || '') + '</select></div>' +
+            '    <div class="form-group" id="prop_' + propName + 'ModelGroup"><label>Schema (Model Ref)</label><div style="display:flex; gap:5px;"><select class="form-select" id="propModelSelect_' + propName + '">' + getModelOptions(modelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnProp_' + propName + '" onclick="goToModel(\\\'propModelSelect_' + propName + '\\\')" style="display:' + (modelRefName ? 'inline-block' : 'none') + '\">➡️</button></div></div>' +
             '    <div class="form-group" id="prop_' + propName + 'StringValidationsGroup"><label>Pattern (RegEx)</label><input type="text" class="form-control" id="propPattern_' + propName + '" value="' + (prop.pattern || '') + '"><label>Min Length</label><input type="number" class="form-control" id="propMinLength_' + propName + '" value="' + (prop.minLength !== undefined ? prop.minLength : '') + '"><label>Max Length</label><input type="number" class="form-control" id="propMaxLength_' + propName + '" value="' + (prop.maxLength !== undefined ? prop.maxLength : '') + '"></div>' +
             '    <div class="form-group" id="prop_' + propName + 'NumberValidationsGroup"><label>Minimum</label><input type="number" class="form-control" id="propMinimum_' + propName + '" value="' + (prop.minimum !== undefined ? prop.minimum : '') + '"><label>Maximum</label><input type="number" class="form-control" id="propMaximum_' + propName + '" value="' + (prop.maximum !== undefined ? prop.maximum : '') + '"></div>' +
             '    <div class="form-group" id="prop_' + propName + 'EnumGroup"><label>Enum Values</label><div class="enum-container" id="prop_' + propName + 'EnumContainer"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="prop_' + propName + 'EnumInput" placeholder="Add enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'prop_' + propName + '\')">+ Add</button></div></div>' +
             '    <div class="array-items-config" id="propItemsConfig_' + propName + '">' +
-            '        <div class="sub-section-header">Array Item Configuration</div>' +
-            '        <div class="form-group"><label>Item Type</label><select class="form-select" id="propItemsType_' + propName + '" onchange="handleTypeChange(this)">' + getTypeOptions(itemsTypeForOptions, true) + '</select></div>' +
-            '        <div class="form-group" id="propItems_' + propName + 'FormatGroup"><label>Item Format</label><select class="form-select" id="propItems_' + propName + 'Format">' + getFormatOptions(prop.items?.type, prop.items?.format || '') + '</select></div>' +
-            '        <div class="form-group" id="propItems_' + propName + 'ModelGroup"><label>Item Model/Schema Ref</label><div style="display:flex; gap:5px;"><select class="form-select" id="propItemsModelSelect_' + propName + '">' + getModelOptions(itemsModelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnPropItems_' + propName + '" onclick="goToModel(\'propItemsModelSelect_' + propName + '\')" style="display:' + (itemsModelRefName ? 'inline-block' : 'none') + '">➡️</button></div></div>' +
+            '        <div class="sub-section-header">Array Item Configuration</div>' +        '        <div class="form-group"><label>Item Type</label><select class="form-select" id="propItemsType_' + propName + '" onchange="handleTypeChange(this)">' + getTypeOptions(itemsTypeForOptions, true) + '</select></div>' +
+            '        <div class="form-group" id="propItems_' + propName + 'FormatGroup"><label>Item Format</label><select class="form-select" id="propItems_' + propName + 'Format">' + getFormatOptions(itemsTypeForFormatList, prop.items?.format || '') + '</select></div>' +
+            '        <div class="form-group" id="propItems_' + propName + 'ModelGroup"><label>Item Model/Schema Ref</label><div style="display:flex; gap:5px;"><select class="form-select" id="propItemsModelSelect_' + propName + '">' + getModelOptions(itemsModelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnPropItems_' + propName + '" onclick="goToModel(\\\'propItemsModelSelect_' + propName + '\\\')" style="display:' + (itemsModelRefName ? 'inline-block' : 'none') + '\">➡️</button></div></div>' +
             '        <div class="form-group" id="propItems_' + propName + 'EnumGroup"><label>Item Enum Values</label><div class="enum-container" id="propItems_' + propName + 'EnumContainer"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="propItems_' + propName + 'EnumInput" placeholder="Add item enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'propItems_' + propName + '\')">+ Add</button></div></div>' +
             '    </div>' +
             '</div>';

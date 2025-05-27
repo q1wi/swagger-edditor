@@ -307,9 +307,32 @@ function saveModel() {
         const propId = item.id.substring('propertyItem_'.length), currentPropName = el('propName_' + propId).value; if (!currentPropName) return;
         const prop = { description: el('propDescription_' + propId).value }; if (el('propRequired_' + propId).checked) required.push(currentPropName);
         const propType = el('propType_' + propId).value;
-        if (propType === 'schema') { const ref = el('propModelSelect_' + propId).value; if (ref) prop.$ref = ref; else prop.type = 'object'; }
-        else {
+        if (propType === 'schema') { const ref = el('propModelSelect_' + propId).value; if (ref) prop.$ref = ref; else prop.type = 'object'; }        else {
             prop.type = propType;
+            // Handle default value
+            if (el('prop_' + propId + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + propId).value !== '') {
+                const defaultValue = el('propDefault_' + propId).value;
+                // Try to parse as appropriate type
+                if (propType === 'number' || propType === 'integer') {
+                    prop.default = propType === 'integer' ? parseInt(defaultValue) : parseFloat(defaultValue);
+                } else if (propType === 'boolean') {
+                    prop.default = defaultValue.toLowerCase() === 'true';
+                } else {
+                    prop.default = defaultValue;
+                }
+            }
+            // Handle example value
+            if (el('prop_' + propId + 'ExampleGroup').style.display !== 'none' && el('propExample_' + propId).value !== '') {
+                const exampleValue = el('propExample_' + propId).value;
+                // Try to parse as appropriate type
+                if (propType === 'number' || propType === 'integer') {
+                    prop.example = propType === 'integer' ? parseInt(exampleValue) : parseFloat(exampleValue);
+                } else if (propType === 'boolean') {
+                    prop.example = exampleValue.toLowerCase() === 'true';
+                } else {
+                    prop.example = exampleValue;
+                }
+            }
             if (el('prop_' + propId + 'FormatGroup').style.display !== 'none' && el('prop_' + propId + 'Format').value) prop.format = el('prop_' + propId + 'Format').value;
             if (el('prop_' + propId + 'StringValidationsGroup').style.display !== 'none') { if(el('propPattern_' + propId).value) prop.pattern = el('propPattern_' + propId).value; if(el('propMinLength_' + propId).value) prop.minLength = parseInt(el('propMinLength_' + propId).value); if(el('propMaxLength_' + propId).value) prop.maxLength = parseInt(el('propMaxLength_' + propId).value); }
             if (el('prop_' + propId + 'NumberValidationsGroup').style.display !== 'none') { if(el('propMinimum_' + propId).value) prop.minimum = parseFloat(el('propMinimum_' + propId).value); if(el('propMaximum_' + propId).value) prop.maximum = parseFloat(el('propMaximum_' + propId).value); }
@@ -318,7 +341,7 @@ function saveModel() {
                 if (itemsType === 'schema') { const ref = el('propItemsModelSelect_' + propId).value; if (ref) prop.items.$ref = ref; else prop.items.type = 'object'; }
                 else { prop.items.type = itemsType; if (el('propItems_' + propId + 'FormatGroup').style.display !== 'none' && el('propItems_' + propId + 'Format').value) prop.items.format = el('propItems_' + propId + 'Format').value; }
                 if (el('propItems_' + propId + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('propItemsEnumContainer_' + propId); if (en.length > 0) prop.items.enum = en; }
-            } else if (propType === 'string' && el('propEnumGroup_' + propId).style.display !== 'none') { const en = collectEnumValuesFromChips('propEnumContainer_' + propId); if (en.length > 0) prop.enum = en; }
+            } else if (propType === 'string' && el('prop_' + propId + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('prop_' + propId + 'EnumContainer'); if (en.length > 0) prop.enum = en; }
         }
         properties[currentPropName] = prop;
     });
