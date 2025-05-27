@@ -85,9 +85,21 @@ function selectInfoTab() {
 }
 
 function _switchToInfoTabUI() {
+    // Cleanup previous auto-save
+    if (window.AutoSave && window.AutoSave.cleanupAll) {
+        window.AutoSave.cleanupAll();
+    }
+    
     _switchTabUI('info');
     const editor = q('#infoTab .info-form');
     if(editor) editor.style.display = 'block';
+    
+    // Set up auto-save for General Info
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupGeneralInfo) {
+            window.AutoSave.setupGeneralInfo();
+        }
+    }, 100);
 }
 
 function selectEndpointTab() {
@@ -147,6 +159,11 @@ function selectEndpoint(path, method) {
 }
 
 function _selectEndpointUI(path, method) {
+    // Cleanup previous auto-save
+    if (window.AutoSave && window.AutoSave.cleanupAll) {
+        window.AutoSave.cleanupAll();
+    }
+    
     currentEndpoint = { path, method }; currentModel = null; currentSecurityDefinitionName = null;
     _switchTabUI('endpoint');
     qa('.endpoint-item, .model-item, .security-definition-list-item').forEach(item => item.classList.remove('active'));
@@ -168,6 +185,11 @@ function selectModel(modelName) {
 }
 
 function _selectModelUI(modelName) {
+    // Cleanup previous auto-save
+    if (window.AutoSave && window.AutoSave.cleanupAll) {
+        window.AutoSave.cleanupAll();
+    }
+    
     currentModel = modelName; currentEndpoint = null; currentSecurityDefinitionName = null;
     _switchTabUI('model');
     qa('.endpoint-item, .model-item, .security-definition-list-item').forEach(item => item.classList.remove('active'));
@@ -183,6 +205,11 @@ function selectSecurityDefinition(defName) {
 }
 
 function _selectSecurityDefinitionUI(defName) {
+    // Cleanup previous auto-save
+    if (window.AutoSave && window.AutoSave.cleanupAll) {
+        window.AutoSave.cleanupAll();
+    }
+    
     currentSecurityDefinitionName = defName; currentEndpoint = null; currentModel = null;
     _switchTabUI('securityDefinition');
     qa('.endpoint-item, .model-item, .security-definition-list-item').forEach(item => item.classList.remove('active'));

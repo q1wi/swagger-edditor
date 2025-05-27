@@ -11,12 +11,11 @@ function displayEndpointEditor(path, method) {
     container.innerHTML =
         '<div id="endpointEditorContent">' +
         '    <div class="editor-header">' +
-        '        <h2 id="editorPathTitle">Editing Endpoint: ' + method.toUpperCase() + ' ' + path + '</h2>' +
-        '        <div class="editor-actions">' +
+        '        <h2 id="editorPathTitle">Editing Endpoint: ' + method.toUpperCase() + ' ' + path + '</h2>' +        '        <div class="editor-actions">' +
         '            <button class="btn btn-info btn-sm clone-btn-editor" onclick="cloneCurrentEndpoint()" title="Clone Endpoint">❐ Clone</button>' +
         '            <button class="btn btn-danger btn-sm delete-btn-editor" onclick="deleteCurrentEndpoint()" title="Delete Endpoint">🗑️ Delete</button>' +
-        '            <button class="btn btn-success btn-sm" onclick="saveEndpoint()" title="Save Endpoint">💾 Save</button>' +
-        '        </div>' +
+        '            <span class="auto-save-indicator" style="color: #28a745; font-size: 12px; padding: 4px 8px;">💾 Auto-save enabled</span>' +
+        '        </div>'+
         '    </div>' +
         '    <div class="form-group"><label>Path</label><input type="text" class="form-control" id="endpointPathInput" value="' + path + '"></div>' +
         '    <div class="form-group">' +
@@ -38,8 +37,7 @@ function displayEndpointEditor(path, method) {
         '    <div class="responses-container"><div id="responsesList"></div><button class="btn btn-primary btn-sm" onclick="addResponseToEndpoint()">+ Add Response</button></div>' +
         '    <h3>Security</h3>' +
         '    <div class="security-definition-container"><div id="securityList"></div><button class="btn btn-primary btn-sm" onclick="addSecurityRequirementToEndpoint()">+ Add Security Requirement</button></div>' +
-        '</div>';
-    displayParametersForEndpoint(endpoint.parameters || []);
+        '</div>';    displayParametersForEndpoint(endpoint.parameters || []);
     displayResponsesForEndpoint(endpoint.responses || {});
     displaySecurityForEndpoint(endpoint.security || []);
     setTimeout(() => {
@@ -47,6 +45,10 @@ function displayEndpointEditor(path, method) {
             select.addEventListener('change', function() { handleModelRefChange(this); });
             if (select.value && select.value !== '') handleModelRefChange(select);
         });
+        // Setup auto-save for endpoint editor
+        if (window.AutoSave && window.AutoSave.setupEndpoint) {
+            window.AutoSave.setupEndpoint();
+        }
     }, 0);
 }
 
@@ -61,11 +63,10 @@ function displayModelEditor(modelName) {
     container.innerHTML =
         '<div id="modelEditorContent">' +
         '    <div class="editor-header">' +
-        '        <h2>Editing Model: ' + modelName + '</h2>' +
-        '        <div class="editor-actions">' +
+        '        <h2>Editing Model: ' + modelName + '</h2>' +        '        <div class="editor-actions">' +
         '             <button class="btn btn-danger btn-sm delete-btn-editor" onclick="deleteCurrentModel()" title="Delete Model">🗑️ Delete</button>' +
-        '             <button class="btn btn-success btn-sm" onclick="saveModel()" title="Save Model">💾 Save</button>' +
-        '        </div>' +
+        '             <span class="auto-save-indicator" style="color: #28a745; font-size: 12px; padding: 4px 8px;">💾 Auto-save enabled</span>' +
+        '        </div>'+
         '    </div>' +
         '    <div class="form-group">' +
         '        <label>Model Name (ID)</label>' +
@@ -86,13 +87,16 @@ function displayModelEditor(modelName) {
         '        <div id="propertiesList"></div>' +
         '        <button class="btn btn-primary btn-sm" onclick="addPropertyToModel()">+ Add Property</button>' +
         '    </div>' +
-        '</div>';
-    displayPropertiesForModel(model.properties || {}, model.required || []);
+        '</div>';    displayPropertiesForModel(model.properties || {}, model.required || []);
     setTimeout(() => {
         qa('#modelEditorContent [id^="propModelSelect_"], #modelEditorContent [id^="propItemsModelSelect_"]').forEach(select => {
             select.addEventListener('change', function() { handleModelRefChange(this); });
             if (select.value && select.value !== '') handleModelRefChange(select);
         });
+        // Setup auto-save for model editor
+        if (window.AutoSave && window.AutoSave.setupModel) {
+            window.AutoSave.setupModel();
+        }
     }, 0);
 }
 
@@ -107,11 +111,10 @@ function displaySecurityDefinitionEditor(defName) {
     let content =
         '<div id="securityDefinitionEditorContent">' +
         '    <div class="editor-header">' +
-        '        <h2>Editing Security Definition: ' + defName + '</h2>' +
-        '        <div class="editor-actions">' +
+        '        <h2>Editing Security Definition: ' + defName + '</h2>' +        '        <div class="editor-actions">' +
         '            <button class="btn btn-danger btn-sm delete-btn-editor" onclick="deleteCurrentSecurityDefinition()" title="Delete Security Definition">🗑️ Delete</button>' +
-        '            <button class="btn btn-success btn-sm" onclick="saveSecurityDefinition()" title="Save Security Definition">💾 Save</button>' +
-        '        </div>' +
+        '            <span class="auto-save-indicator" style="color: #28a745; font-size: 12px; padding: 4px 8px;">💾 Auto-save enabled</span>' +
+        '        </div>'+
         '    </div>' +
         '    <div class="form-group">' +
         '        <label>Definition Name (ID)</label>' +
@@ -125,12 +128,17 @@ function displaySecurityDefinitionEditor(defName) {
         '    </div>' +
         '    <div class="form-group"><label>Description</label><textarea class="form-control" id="securityDefDescription">' + (secDef.description || '') + '</textarea></div>' +
         '    <div id="securityDefTypeSpecificFields"></div>' +
-        '</div>';
-    container.innerHTML = content;
+        '</div>';    container.innerHTML = content;
     renderSecurityDefinitionTypeSpecificFields(secDef); // New helper
     if (secDef.type === 'oauth2') {
         displayScopesForDefinition(secDef.scopes || {});
     }
+    // Setup auto-save for security definition editor
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupSecurityDefinition) {
+            window.AutoSave.setupSecurityDefinition();
+        }
+    }, 0);
 }
 
 function renderSecurityDefinitionTypeSpecificFields(secDef) {
@@ -302,12 +310,11 @@ function displayParametersForEndpoint(parameters) {
         renderEnumEditor(el('param' + index + 'EnumContainer'), param.enum, 'param' + index);
         if(param.items) {
             renderEnumEditor(el('param' + index + 'ItemsEnumContainer'), param.items.enum, 'param' + index + 'Items');
-        }
-        const paramEnumInput = el('param' + index + 'EnumInput'); 
+        }        const paramEnumInput = el('param' + index + 'EnumInput'); 
         if (paramEnumInput) { 
             paramEnumInput.addEventListener('keypress', function(event) { 
                 if (event.key === 'Enter') { 
-                    addEnumChip(this.nextElementSibling, 'param' + index); 
+                    addEnumChip('param' + index); 
                     event.preventDefault(); 
                 }
             });
@@ -316,7 +323,7 @@ function displayParametersForEndpoint(parameters) {
         if (paramItemsEnumInput) { 
             paramItemsEnumInput.addEventListener('keypress', function(event) { 
                 if (event.key === 'Enter') { 
-                    addEnumChip(this.nextElementSibling, 'param' + index + 'Items'); 
+                    addEnumChip('param' + index + 'Items'); 
                     event.preventDefault(); 
                 }
             });
@@ -417,13 +424,13 @@ function displayPropertiesForModel(properties, requiredArr) {
             '    <div class="form-group" id="prop_' + propName + 'ModelGroup"><label>Schema (Model Ref)</label><div style="display:flex; gap:5px;"><select class="form-select" id="propModelSelect_' + propName + '">' + getModelOptions(modelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnProp_' + propName + '" onclick="goToModel(\'propModelSelect_' + propName + '\')" style="display:' + (modelRefName ? 'inline-block' : 'none') + '">➡️</button></div></div>' +
             '    <div class="form-group" id="prop_' + propName + 'StringValidationsGroup"><label>Pattern (RegEx)</label><input type="text" class="form-control" id="propPattern_' + propName + '" value="' + (prop.pattern || '') + '"><label>Min Length</label><input type="number" class="form-control" id="propMinLength_' + propName + '" value="' + (prop.minLength !== undefined ? prop.minLength : '') + '"><label>Max Length</label><input type="number" class="form-control" id="propMaxLength_' + propName + '" value="' + (prop.maxLength !== undefined ? prop.maxLength : '') + '"></div>' +
             '    <div class="form-group" id="prop_' + propName + 'NumberValidationsGroup"><label>Minimum</label><input type="number" class="form-control" id="propMinimum_' + propName + '" value="' + (prop.minimum !== undefined ? prop.minimum : '') + '"><label>Maximum</label><input type="number" class="form-control" id="propMaximum_' + propName + '" value="' + (prop.maximum !== undefined ? prop.maximum : '') + '"></div>' +
-            '    <div class="form-group" id="propEnumGroup_' + propName + '"><label>Enum Values</label><div class="enum-container" id="propEnumContainer_' + propName + '"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="propEnumInput_' + propName + '" placeholder="Add enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'prop_' + propName + '\')">+ Add</button></div></div>' +
+            '    <div class="form-group" id="prop_' + propName + 'EnumGroup"><label>Enum Values</label><div class="enum-container" id="prop_' + propName + 'EnumContainer"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="prop_' + propName + 'EnumInput" placeholder="Add enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'prop_' + propName + '\')">+ Add</button></div></div>' +
             '    <div class="array-items-config" id="propItemsConfig_' + propName + '">' +
             '        <div class="sub-section-header">Array Item Configuration</div>' +
             '        <div class="form-group"><label>Item Type</label><select class="form-select" id="propItemsType_' + propName + '" onchange="handleTypeChange(this)">' + getTypeOptions(itemsTypeForOptions, true) + '</select></div>' +
             '        <div class="form-group" id="propItems_' + propName + 'FormatGroup"><label>Item Format</label><select class="form-select" id="propItems_' + propName + 'Format">' + getFormatOptions(prop.items?.type, prop.items?.format || '') + '</select></div>' +
             '        <div class="form-group" id="propItems_' + propName + 'ModelGroup"><label>Item Model/Schema Ref</label><div style="display:flex; gap:5px;"><select class="form-select" id="propItemsModelSelect_' + propName + '">' + getModelOptions(itemsModelRefName) + '</select><button class="btn btn-primary btn-sm" id="goToModelBtnPropItems_' + propName + '" onclick="goToModel(\'propItemsModelSelect_' + propName + '\')" style="display:' + (itemsModelRefName ? 'inline-block' : 'none') + '">➡️</button></div></div>' +
-            '        <div class="form-group" id="propItems_' + propName + 'EnumGroup"><label>Item Enum Values</label><div class="enum-container" id="propItemsEnumContainer_' + propName + '"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="propItemsEnumInput_' + propName + '" placeholder="Add item enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'propItems_' + propName + '\')">+ Add</button></div></div>' +
+            '        <div class="form-group" id="propItems_' + propName + 'EnumGroup"><label>Item Enum Values</label><div class="enum-container" id="propItems_' + propName + 'EnumContainer"></div><div class="enum-input-group"><input type="text" class="form-control enum-input" id="propItems_' + propName + 'EnumInput" placeholder="Add item enum value"><button class="btn btn-secondary btn-sm" onclick="addEnumChip(this, \'propItems_' + propName + '\')">+ Add</button></div></div>' +
             '    </div>' +
             '</div>';
         list.appendChild(pDiv);
@@ -431,24 +438,23 @@ function displayPropertiesForModel(properties, requiredArr) {
         if (el('propType_' + propName).value === 'array' && prop.items) {
             handleTypeChange(el('propItemsType_' + propName));
         }
-        renderEnumEditor(el('propEnumContainer_' + propName), prop.enum, 'prop_' + propName);
+        renderEnumEditor(el('prop_' + propName + 'EnumContainer'), prop.enum, 'prop_' + propName);
         if(prop.items) {
-            renderEnumEditor(el('propItemsEnumContainer_' + propName), prop.items.enum, 'propItems_' + propName);
-        }
-        const propEnumInput = el('propEnumInput_' + propName); 
+            renderEnumEditor(el('propItems_' + propName + 'EnumContainer'), prop.items.enum, 'propItems_' + propName);
+        }        const propEnumInput = el('prop_' + propName + 'EnumInput'); 
         if (propEnumInput) {
             propEnumInput.addEventListener('keypress', function(event) { 
                 if (event.key === 'Enter') { 
-                    addEnumChip(this.nextElementSibling, 'prop_' + propName); 
+                    addEnumChip('prop_' + propName); 
                     event.preventDefault(); 
                 }
             });
         }
-        const propItemsEnumInput = el('propItemsEnumInput_' + propName); 
+        const propItemsEnumInput = el('propItems_' + propName + 'EnumInput'); 
         if (propItemsEnumInput) {
             propItemsEnumInput.addEventListener('keypress', function(event) { 
                 if (event.key === 'Enter') { 
-                    addEnumChip(this.nextElementSibling, 'propItems_' + propName); 
+                    addEnumChip('propItems_' + propName); 
                     event.preventDefault(); 
                 }
             });
@@ -549,15 +555,25 @@ function renderEnumEditor(containerElement, enumValues = [], contextPrefix) {
     containerElement.innerHTML = '';
     (enumValues || []).forEach(val => {
         const chip = create('span', { className: 'enum-item', textContent: val });
-        const removeBtn = create('span', { className: 'remove-enum', textContent: ' ×', onclick: () => chip.remove() });
+        const removeBtn = create('span', { 
+            className: 'remove-enum', 
+            textContent: ' ×', 
+            onclick: () => {
+                chip.remove();
+                // Trigger auto-save when chip is removed
+                triggerAutoSaveForCurrentEditor();
+            }
+        });
         chip.appendChild(removeBtn);
         containerElement.appendChild(chip);
     });
 }
 
-function addEnumChip(buttonElement, contextPrefix) {
-    const inputField = el(contextPrefix + 'EnumInput');
-    const container = el(contextPrefix + 'EnumContainer');
+function addEnumChip(buttonElementOrContextPrefix, contextPrefix) {
+    // Handle both old-style calls (with button) and new-style calls (context prefix only)
+    const actualContextPrefix = contextPrefix || buttonElementOrContextPrefix;
+    const inputField = el(actualContextPrefix + 'EnumInput');
+    const container = el(actualContextPrefix + 'EnumContainer');
     if (inputField && container && inputField.value.trim() !== '') {
         const value = inputField.value.trim();
         const existingChips = qa('.enum-item', container);
@@ -568,10 +584,34 @@ function addEnumChip(buttonElement, contextPrefix) {
             }
         }
         const chip = create('span', { className: 'enum-item', textContent: value });
-        const removeBtn = create('span', { className: 'remove-enum', textContent: ' ×', onclick: () => chip.remove() });
+        const removeBtn = create('span', { 
+            className: 'remove-enum', 
+            textContent: ' ×', 
+            onclick: () => {
+                chip.remove();
+                // Trigger auto-save when chip is removed
+                triggerAutoSaveForCurrentEditor();
+            }
+        });
         chip.appendChild(removeBtn);
         container.appendChild(chip);
-        inputField.value = ''; inputField.focus();
+        inputField.value = ''; 
+        inputField.focus();
+        
+        // Trigger auto-save when chip is added
+        triggerAutoSaveForCurrentEditor();
+    }
+}
+
+// Helper function to trigger auto-save for the current editor
+function triggerAutoSaveForCurrentEditor() {
+    // Determine which editor is currently active and trigger auto-save
+    if (currentEndpoint && window.AutoSave) {
+        setTimeout(() => saveEndpointSilent(), 100);
+    } else if (currentModel && window.AutoSave) {
+        setTimeout(() => saveModelSilent(), 100);
+    } else if (currentSecurityDefinitionName && window.AutoSave) {
+        setTimeout(() => saveSecurityDefinitionSilent(), 100);
     }
 }
 

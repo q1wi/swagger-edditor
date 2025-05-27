@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Save Fixes Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .form-group { margin: 10px 0; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .enum-test { padding: 10px; background: #f8f9fa; border-radius: 4px; margin: 10px 0; }
+        .enum-container { display: flex; flex-wrap: wrap; gap: 5px; margin: 5px 0; }
+        .enum-item { background: #007bff; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+        .remove-enum { cursor: pointer; font-weight: bold; margin-left: 4px; }
+        .enum-input-group { display: flex; gap: 5px; margin-top: 5px; }
+        .enum-input { flex: 1; }
+        button { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; }
+        .btn-secondary { background: #6c757d; color: white; }
+        #saveStatus { position: fixed; top: 10px; right: 10px; padding: 8px 12px; border-radius: 4px; font-size: 12px; z-index: 1000; display: none; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Auto-Save Fixes Test</h1>
+    
+    <div class="test-section info">
+        <h3>Test Instructions</h3>
+        <ol>
+            <li>Type in the form fields below and watch for save messages</li>
+            <li>Notice that save messages only appear when you actually change values</li>
+            <li>Test enum chips by typing values and pressing Enter or clicking "Add"</li>
+            <li>Remove enum chips by clicking the × symbol</li>
+            <li>Verify that enum operations trigger auto-save</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>📝 Form Fields Test</h3>
+        <div class="form-group">
+            <label>API Title</label>
+            <input type="text" id="apiTitle" placeholder="Test typing here and blur">
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea id="apiDescription" placeholder="Test typing here and blur"></textarea>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>🏷️ Enum Chips Test</h3>
+        <div class="enum-test">
+            <label>Test Enum Values</label>
+            <div class="enum-container" id="testEnumContainer"></div>
+            <div class="enum-input-group">
+                <input type="text" class="enum-input" id="testEnumInput" placeholder="Type value and press Enter">
+                <button class="btn-secondary" onclick="addTestEnumChip()">Add</button>
+            </div>
+            <p style="font-size: 12px; color: #666;">Try typing "value1", "value2", etc. and pressing Enter or clicking Add</p>
+        </div>
+    </div>
+
+    <div class="test-section success" id="testResults" style="display: none;">
+        <h3>✅ Test Results</h3>
+        <div id="resultsContent"></div>
+    </div>
+
+    <!-- Load required scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auto-save.js"></script>
+    
+    <script>
+        // Mock some global variables and functions needed for testing
+        window.swaggerDoc = {
+            info: { title: '', version: '', description: '' },
+            basePath: '',
+            host: ''
+        };
+        
+        // Mock save functions
+        window.saveGeneralInfoSilent = function() {
+            console.log('saveGeneralInfoSilent called');
+            logTestResult('✅ Auto-save triggered successfully');
+        };
+        
+        let testResults = [];
+        
+        function logTestResult(message) {
+            testResults.push(message);
+            const resultsDiv = document.getElementById('testResults');
+            const contentDiv = document.getElementById('resultsContent');
+            contentDiv.innerHTML = testResults.map(result => `<p>${result}</p>`).join('');
+            resultsDiv.style.display = 'block';
+        }
+        
+        // Initialize auto-save system
+        if (window.AutoSave) {
+            window.AutoSave.init();
+            
+            // Set up auto-save for test fields
+            setTimeout(() => {
+                const titleField = document.getElementById('apiTitle');
+                const descField = document.getElementById('apiDescription');
+                
+                if (titleField && window.AutoSave) {
+                    // This should now skip enum inputs properly
+                    const fields = [titleField, descField];
+                    fields.forEach(field => {
+                        if (field) {
+                            window.AutoSave.config = window.AutoSave.config || {};
+                            // Manually call the setup function
+                            setupFieldAutoSave(field, 'generalInfo', saveGeneralInfoSilent);
+                        }
+                    });
+                    logTestResult('✅ Auto-save system initialized');
+                }
+            }, 100);
+        }
+        
+        // Test enum chip functionality
+        function addTestEnumChip() {
+            const inputField = document.getElementById('testEnumInput');
+            const container = document.getElementById('testEnumContainer');
+            
+            if (inputField && container && inputField.value.trim() !== '') {
+                const value = inputField.value.trim();
+                
+                // Check for duplicates
+                const existingChips = container.querySelectorAll('.enum-item');
+                for (let chip of existingChips) { 
+                    if (chip.textContent.slice(0, -2).trim() === value) { 
+                        alert("Enum value already exists."); 
+                        return; 
+                    }
+                }
+                
+                // Create chip
+                const chip = document.createElement('span');
+                chip.className = 'enum-item';
+                chip.textContent = value;
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'remove-enum';
+                removeBtn.textContent = ' ×';
+                removeBtn.onclick = () => {
+                    chip.remove();
+                    logTestResult(`🗑️ Removed enum chip: ${value}`);
+                };
+                
+                chip.appendChild(removeBtn);
+                container.appendChild(chip);
+                inputField.value = '';
+                inputField.focus();
+                
+                logTestResult(`➕ Added enum chip: ${value}`);
+            }
+        }
+        
+        // Add Enter key support for enum input
+        document.getElementById('testEnumInput').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                addTestEnumChip();
+                event.preventDefault();
+            }
+        });
+        
+        // Test field change detection
+        const titleField = document.getElementById('apiTitle');
+        const descField = document.getElementById('apiDescription');
+        
+        if (titleField) {
+            titleField.addEventListener('blur', () => {
+                if (titleField.value !== '') {
+                    logTestResult(`📝 Title field changed to: "${titleField.value}"`);
+                }
+            });
+        }
+        
+        if (descField) {
+            descField.addEventListener('blur', () => {
+                if (descField.value !== '') {
+                    logTestResult(`📝 Description field changed to: "${descField.value}"`);
+                }
+            });
+        }
+        
+        console.log('Auto-save fixes test page loaded');
+    </script>
+</body>
+</html>

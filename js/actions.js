@@ -79,6 +79,12 @@ function addParameterToEndpoint() {
     if (!endpoint.parameters) endpoint.parameters = [];
     endpoint.parameters.push({ name: 'newParam' + endpoint.parameters.length, in: 'query', type: 'string', description: '' });
     displayParametersForEndpoint(endpoint.parameters);
+    // Setup auto-save for newly added parameter fields
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupEndpoint) {
+            window.AutoSave.setupEndpoint();
+        }
+    }, 100);
 }
 
 function removeParameterFromEndpoint(index, event) {
@@ -97,6 +103,12 @@ function addResponseToEndpoint() {
     if (endpoint.responses[newCode]) { alert('Response with code ' + newCode + ' already exists.'); return; } // Corrected alert
     endpoint.responses[newCode] = { description: 'New response' };
     displayResponsesForEndpoint(endpoint.responses);
+    // Setup auto-save for newly added response fields
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupEndpoint) {
+            window.AutoSave.setupEndpoint();
+        }
+    }, 100);
 }
 
 function removeResponseFromEndpoint(code, event) {
@@ -112,6 +124,12 @@ function addHeaderToResponse(responseCode) {
     if (!headerName || response.headers[headerName]) { alert(headerName ? 'Header "' + headerName + '" already exists.' : "Invalid header name."); return; } // Corrected alert
     response.headers[headerName] = { type: 'string', description: 'New header description' };
     displayHeadersForResponse(responseCode, response.headers);
+    // Setup auto-save for newly added header fields
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupEndpoint) {
+            window.AutoSave.setupEndpoint();
+        }
+    }, 100);
 }
 
 function removeHeaderFromResponse(responseCode, headerName, event) {
@@ -127,6 +145,12 @@ function addPropertyToModel() {
     if (!newPropName || model.properties[newPropName]) { alert(newPropName ? 'Property "' + newPropName + '" already exists.' : "Invalid property name."); return; } // Corrected alert
     model.properties[newPropName] = { type: 'string', description: '' };
     displayPropertiesForModel(model.properties, model.required || []);
+    // Setup auto-save for newly added property fields
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupModel) {
+            window.AutoSave.setupModel();
+        }
+    }, 100);
 }
 
 function removePropertyFromModel(propName, event) {
@@ -144,6 +168,12 @@ function addSecurityRequirementToEndpoint() {
         if (!endpoint.security) endpoint.security = [];
         endpoint.security.push({ "newSchemeName": [] });
         displaySecurityForEndpoint(endpoint.security);
+        // Setup auto-save for newly added security requirement fields
+        setTimeout(() => {
+            if (window.AutoSave && window.AutoSave.setupEndpoint) {
+                window.AutoSave.setupEndpoint();
+            }
+        }, 100);
     }
 
 function removeSecurityRequirementFromEndpoint(index, event) {
@@ -183,6 +213,12 @@ function addScopeToDefinition() {
     const scopeDesc = prompt('Enter description for scope "' + scopeKey + '":', "Description for " + scopeKey); // Corrected prompt
     secDef.scopes[scopeKey] = scopeDesc || "";
     displayScopesForDefinition(secDef.scopes);
+    // Setup auto-save for newly added scope fields
+    setTimeout(() => {
+        if (window.AutoSave && window.AutoSave.setupSecurityDefinition) {
+            window.AutoSave.setupSecurityDefinition();
+        }
+    }, 100);
 }
 
 function removeScopeFromUIDefinition(buttonElement, scopeKey) {

@@ -48,7 +48,7 @@
             <div class="tab" onclick="selectModelTab(event)">Model Editor</div>
             <div class="tab" onclick="selectSecurityDefinitionTab(event)">Security Definition Editor</div>
         </div>
-        <div id="infoTab" class="tab-content"><div class="info-form"><h2>API Information</h2><div class="form-group"><label>API Title</label><input type="text" class="form-control" id="apiTitle" placeholder="Your API Name"></div><div class="form-group"><label>Version</label><input type="text" class="form-control" id="apiVersion" placeholder="1.0.0"></div><div class="form-group"><label>Description</label><textarea class="form-control" id="apiDescription" placeholder="Description of your API"></textarea></div><div class="form-group"><label>Base Path</label><input type="text" class="form-control" id="apiBasePath" placeholder="/api/v1"></div><div class="form-group"><label>Host</label><input type="text" class="form-control" id="apiHost" placeholder="api.example.com"></div><button class="btn btn-primary" onclick="saveGeneralInfo()">Save Info</button></div></div>
+        <div id="infoTab" class="tab-content"><div class="info-form"><h2>API Information</h2><div class="form-group"><label>API Title</label><input type="text" class="form-control" id="apiTitle" placeholder="Your API Name"></div><div class="form-group"><label>Version</label><input type="text" class="form-control" id="apiVersion" placeholder="1.0.0"></div><div class="form-group"><label>Description</label><textarea class="form-control" id="apiDescription" placeholder="Description of your API"></textarea></div><div class="form-group"><label>Base Path</label><input type="text" class="form-control" id="apiBasePath" placeholder="/api/v1"></div><div class="form-group"><label>Host</label><input type="text" class="form-control" id="apiHost" placeholder="api.example.com"></div><div class="auto-save-info" style="color: #28a745; font-size: 12px; padding: 8px; background: #f8f9fa; border-radius: 4px; margin-top: 10px;">💾 Auto-save enabled - Changes are saved automatically</div></div></div>
         <div id="endpointTab" class="tab-content hidden"><div id="endpointEditor"><div id="endpointEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select an endpoint or add a new one</p></div></div></div>
         <div id="modelTab" class="tab-content hidden"><div id="modelEditor"><div id="modelEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select a model or add a new one</p></div></div></div>
         <div id="securityDefinitionTab" class="tab-content hidden"><div id="securityDefinitionEditor"><div id="securityDefinitionEditorContent"><p style="text-align: center; color: #999; padding: 40px;">Select a security definition or add a new one</p></div></div></div>
@@ -60,6 +60,7 @@
 <script src="js/config.js"></script>
 <script src="js/state.js"></script>
 <script src="js/utils.js"></script>
+<script src="js/auto-save.js"></script>
 <script src="js/history.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/editors.js"></script>

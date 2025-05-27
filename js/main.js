@@ -74,8 +74,17 @@ function initializeApp() {
     initializeAppNavigation();
     setupResizer();
     setupFileInputListener();
-    const clearBtn = el('clearSearchBtn'); if (clearBtn) clearBtn.onclick = clearSearchInput;
-    filterLists();
+    const clearBtn = el('clearSearchBtn'); if (clearBtn) clearBtn.onclick = clearSearchInput;    filterLists();
+    // Initialize auto-save system
+    if (window.AutoSave && window.AutoSave.init) {
+        window.AutoSave.init();
+        // Set up auto-save for General Info tab since it's the default active tab
+        setTimeout(() => {
+            if (window.AutoSave && window.AutoSave.setupGeneralInfo) {
+                window.AutoSave.setupGeneralInfo();
+            }
+        }, 100);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
