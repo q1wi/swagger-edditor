@@ -251,15 +251,28 @@ function collectEndpointDataFromForm() {
             } else if (paramType === 'string' && el('param' + index + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('param' + index + 'EnumContainer'); if (en.length > 0) param.enum = en; }
         }
         data.parameters.push(param);
-    });
-    qa('#responsesList .response-item').forEach(item => {
-        const code = item.id.substring('responseItem'.length); const resp = { description: el('responseDescription' + code).value, headers: {} };
-        const schemaRef = el('responseSchema' + code).value; if (schemaRef) resp.schema = { $ref: schemaRef };
+    });    qa('#responsesList .response-item').forEach(item => {
+        const code = item.id.substring('responseItem'.length);
+        const respDescEl = el('responseDescription' + code);
+        const resp = { description: respDescEl ? respDescEl.value : '', headers: {} };
+        const schemaRefEl = el('responseSchema' + code);
+        const schemaRef = schemaRefEl ? schemaRefEl.value : '';
+        if (schemaRef) resp.schema = { $ref: schemaRef };
         qa('#responseHeadersContainer' + code + ' .header-item').forEach(hItem => {
-            const hName = hItem.id.substring('headerItem_' + code + '_'.length); const hDef = { description: el('headerDescription_' + code + '_' + hName).value, type: el('headerType_' + code + '_' + hName).value };
-            if (hDef.type === 'array') hDef.items = { type: el('headerItemsType_' + code + '_' + hName).value || 'string' };
+            const hName = hItem.id.substring('headerItem_' + code + '_'.length);
+            const hDescEl = el('headerDescription_' + code + '_' + hName);
+            const hTypeEl = el('headerType_' + code + '_' + hName);
+            const hDef = { 
+                description: hDescEl ? hDescEl.value : '', 
+                type: hTypeEl ? hTypeEl.value : 'string' 
+            };
+            if (hDef.type === 'array') {
+                const hItemsTypeEl = el('headerItemsType_' + code + '_' + hName);
+                hDef.items = { type: hItemsTypeEl ? hItemsTypeEl.value : 'string' };
+            }
             resp.headers[hName] = hDef;
-        }); if(Object.keys(resp.headers).length === 0) delete resp.headers;
+        }); 
+        if(Object.keys(resp.headers).length === 0) delete resp.headers;
         data.responses[code] = resp;
     });
     qa('#securityList .security-scheme-item').forEach((item, index) => {
