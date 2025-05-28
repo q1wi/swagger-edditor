@@ -435,3 +435,91 @@ function saveSecurityDefinition() {
     swaggerDoc.securityDefinitions[newDefName] = defData; currentSecurityDefinitionName = newDefName;
     updateSecurityDefinitionsList(el('searchInput').value); selectSecurityDefinition(newDefName); alert('Security definition saved!');
 }
+
+
+async function normalizeAndResaveAll() {
+    // 1. Store current view/state
+    const originalState = history.state ? JSON.parse(JSON.stringify(history.state)) : { type: 'info' };
+    const searchInputValue = el('searchInput').value;
+
+    alert('Normalizing and re-saving all items. This may take a moment and the UI will update rapidly. Please wait...');
+
+    // Disable auto-save and history pushes during this process
+    const autoSaveDebounce = window.AutoSave.config.enableDebounce;
+    const autoSaveBlur = window.AutoSave.config.enableOnBlur;
+    window.AutoSave.config.enableDebounce = false;
+    window.AutoSave.config.enableOnBlur = false;
+    isBatchProcessing = true;
+
+    try {
+        // 2. Process General Info
+        saveGeneralInfoSilent();
+
+        // 3. Process Endpoints
+        const allEndpoints = [];
+        for (const path in swaggerDoc.paths) {
+            for (const method in swaggerDoc.paths[path]) {
+                allEndpoints.push({ path, method });
+            }
+        }
+        for (const ep of allEndpoints) {
+            _selectEndpointUI(ep.path, ep.method); // Sets currentEndpoint, renders editor
+            // await new Promise(resolve => setTimeout(resolve, 5)); // Small delay for DOM, if needed
+            saveEndpointSilent(); // Uses collectEndpointDataFromForm on the rendered editor
+        }
+
+        // 4. Process Models
+        const allModels = Object.keys(swaggerDoc.definitions || {});
+        for (const modelName of allModels) {
+            _selectModelUI(modelName); // Sets currentModel, renders editor
+            // await new Promise(resolve => setTimeout(resolve, 5));
+            saveModelSilent();
+        }
+
+        // 5. Process Security Definitions
+        const allSecDefs = Object.keys(swaggerDoc.securityDefinitions || {});
+        for (const defName of allSecDefs) {
+            _selectSecurityDefinitionUI(defName); // Sets currentSecurityDefinitionName, renders editor
+            // await new Promise(resolve => setTimeout(resolve, 5));
+            saveSecurityDefinitionSilent();
+        }
+
+    } catch (error) {
+        console.error("Error during normalization:", error);
+        alert("An error occurred during normalization. Check console for details.");
+    } finally {
+        // Restore settings
+        window.AutoSave.config.enableDebounce = autoSaveDebounce;
+        window.AutoSave.config.enableOnBlur = autoSaveBlur;
+        isBatchProcessing = false;
+
+        // Restore original view without adding to history from the loop
+        // _restoreUIFromState will call the appropriate _selectXYZUI function
+        // which in turn handles UI update and auto-save setup for the restored view.
+        isRestoringStateFromPop = true; 
+        _restoreUIFromState(originalState);
+        
+        // Explicitly replace history state to the original one
+        let originalHash = 'info';
+        let originalTitle = "General Info";
+        if (originalState.type === 'endpoint') {
+            originalHash = `endpoint/${encodeURIComponent(originalState.path)}/${originalState.method}`;
+            originalTitle = `Endpoint: ${originalState.method.toUpperCase()} ${originalState.path}`;
+        } else if (originalState.type === 'model') {
+            originalHash = `model/${encodeURIComponent(originalState.name)}`;
+            originalTitle = `Model: ${originalState.name}`;
+        } else if (originalState.type === 'securityDefinition') {
+            originalHash = `securityDefinition/${encodeURIComponent(originalState.name)}`;
+            originalTitle = `Security Definition: ${originalState.name}`;
+        }
+        replaceStateInHistory(originalState, originalTitle, originalHash);
+        isRestoringStateFromPop = false;
+        
+        updateBackButtonState();
+
+        el('searchInput').value = searchInputValue;
+        filterLists();
+
+        alert('Normalization complete! Swagger data has been re-processed.');
+    }
+}

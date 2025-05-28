@@ -1,6 +1,6 @@
 // js/history.js
 function pushStateToHistory(state, title, hash) {
-    if (isRestoringStateFromPop) return;
+    if (isRestoringStateFromPop || isBatchProcessing) return; // Modified to check isBatchProcessing
     if (currentHistoryIndex < navigationHistory.length - 1) {
         navigationHistory = navigationHistory.slice(0, currentHistoryIndex + 1);
     }
@@ -15,6 +15,7 @@ function pushStateToHistory(state, title, hash) {
 }
 
 function replaceStateInHistory(state, title, hash) {
+    // No change needed for isBatchProcessing here, as replace is fine.
     if (navigationHistory.length === 0 || currentHistoryIndex === -1) {
         navigationHistory = [state];
         currentHistoryIndex = 0;

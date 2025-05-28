@@ -6,3 +6,4 @@ let currentSecurityDefinitionName = null;
 let navigationHistory = [];
 let currentHistoryIndex = -1;
 let isRestoringStateFromPop = false;
+let isBatchProcessing = false; // Added for normalization process
