@@ -118,6 +118,7 @@ function setupFieldAutoSave(field, editorType, saveFunction) {
     
     // Store original value to detect actual changes
     field._originalValue = field.value || field.textContent || '';
+    if (field.type === 'checkbox') field._originalValue = field.checked;
     
     // Remove existing listeners to avoid duplicates
     field.removeEventListener('input', field._autoSaveInputHandler);
@@ -134,10 +135,10 @@ function setupFieldAutoSave(field, editorType, saveFunction) {
     // Blur handler for immediate saving
     field._autoSaveBlurHandler = () => {
         if (AUTO_SAVE_CONFIG.enableOnBlur) {
-            // Check if value actually changed
-            const currentValue = field.value || field.textContent || '';
+            let currentValue = field.value || field.textContent || '';
+            if (field.type === 'checkbox') currentValue = field.checked;
+
             if (currentValue !== field._originalValue) {
-                // Clear any pending debounced save
                 if (autoSaveTimers[editorType]) {
                     clearTimeout(autoSaveTimers[editorType]);
                     autoSaveTimers[editorType] = null;
@@ -145,7 +146,7 @@ function setupFieldAutoSave(field, editorType, saveFunction) {
                 try {
                     saveFunction();
                     showSaveStatus('Saved successfully', 'success');
-                    field._originalValue = currentValue; // Update stored value
+                    field._originalValue = currentValue;
                 } catch (error) {
                     console.error(`Auto-save on blur failed for ${editorType}:`, error);
                     showSaveStatus('Save failed', 'error');
@@ -154,15 +155,21 @@ function setupFieldAutoSave(field, editorType, saveFunction) {
         }
     };
     
-    // Change handler for immediate saving (optional)
+    // Change handler for immediate saving (optional, good for selects/checkboxes)
     field._autoSaveChangeHandler = () => {
-        if (AUTO_SAVE_CONFIG.enableOnChange) {
-            const currentValue = field.value || field.textContent || '';
+        if (AUTO_SAVE_CONFIG.enableOnChange || field.tagName.toLowerCase() === 'select' || field.type === 'checkbox') {
+            let currentValue = field.value || field.textContent || '';
+            if (field.type === 'checkbox') currentValue = field.checked;
+
             if (currentValue !== field._originalValue) {
+                 if (autoSaveTimers[editorType]) { // Clear debounce if exists
+                    clearTimeout(autoSaveTimers[editorType]);
+                    autoSaveTimers[editorType] = null;
+                }
                 try {
                     saveFunction();
                     showSaveStatus('Saved successfully', 'success');
-                    field._originalValue = currentValue; // Update stored value
+                    field._originalValue = currentValue; 
                 } catch (error) {
                     console.error(`Auto-save on change failed for ${editorType}:`, error);
                     showSaveStatus('Save failed', 'error');
@@ -174,14 +181,13 @@ function setupFieldAutoSave(field, editorType, saveFunction) {
     // Add event listeners
     field.addEventListener('input', field._autoSaveInputHandler);
     field.addEventListener('blur', field._autoSaveBlurHandler);
-    field.addEventListener('change', field._autoSaveChangeHandler);
+    field.addEventListener('change', field._autoSaveChangeHandler); // For select, checkbox
 }
 
 // Setup auto-save for endpoint editor
 function setupEndpointAutoSave() {
     if (!currentEndpoint) return;
     
-    // Get all form fields in the endpoint editor
     const endpointEditor = el('endpointEditorContent');
     if (!endpointEditor) return;
     
@@ -244,11 +250,13 @@ function saveEndpointSilent() {
         return;
     }
     
-    const endpointData = collectEndpointDataFromForm();
+    const endpointData = collectEndpointDataFromForm(); // collectEndpointDataFromForm is in actions.js
     
     if (oldPath !== newPath || oldMethod !== newMethod) {
         if (swaggerDoc.paths[newPath]?.[newMethod]) {
-            console.warn('Auto-save skipped: Endpoint already exists at new location');
+            console.warn('Auto-save skipped: Endpoint already exists at new location. Reverting UI name.');
+            el('endpointPathInput').value = oldPath;
+            el('endpointMethodInput').value = oldMethod;
             return;
         }
         delete swaggerDoc.paths[oldPath][oldMethod];
@@ -263,8 +271,11 @@ function saveEndpointSilent() {
     swaggerDoc.paths[newPath][newMethod] = endpointData;
     currentEndpoint = { path: newPath, method: newMethod };
     
-    // Update UI without selecting (to avoid re-rendering during editing)
     updateEndpointsList(el('searchInput').value);
+    // Update editor title if it changed
+    const editorTitle = el('editorPathTitle');
+    if (editorTitle) editorTitle.textContent = 'Editing Endpoint: ' + newMethod.toUpperCase() + ' ' + newPath;
+
 }
 
 function saveModelSilent() {
@@ -283,83 +294,105 @@ function saveModelSilent() {
     const required = [];
     
     qa('#propertiesList .property-item').forEach(item => {
-        const propId = item.id.substring('propertyItem_'.length);
-        const currentPropName = el('propName_' + propId).value;
+        const propIdInput = q('input[id^="propName_"]', item);
+        if (!propIdInput) return;
+        const originalPropName = propIdInput.id.substring('propName_'.length);
+        const currentPropName = propIdInput.value;
         if (!currentPropName) return;
         
-        const prop = { description: el('propDescription_' + propId).value };
-        if (el('propRequired_' + propId).checked) {
+        const prop = { description: el('propDescription_' + originalPropName).value };
+        if (el('propRequired_' + originalPropName).checked) {
             required.push(currentPropName);
         }
         
-        const propType = el('propType_' + propId).value;
+        const propType = el('propType_' + originalPropName).value;
         if (propType === 'schema') {
-            const ref = el('propModelSelect_' + propId).value;
-            if (ref) {
-                prop.$ref = ref;
-            } else {
-                prop.type = 'object';
-            }        } else {
+            const ref = el('propModelSelect_' + originalPropName).value;
+            if (ref) prop.$ref = ref; else prop.type = 'object';
+        } else {
             prop.type = propType;
-            // Handle default value
-            if (el('prop_' + propId + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + propId).value !== '') {
-                const defaultValue = el('propDefault_' + propId).value;
-                // Try to parse as appropriate type
-                if (propType === 'number' || propType === 'integer') {
-                    prop.default = propType === 'integer' ? parseInt(defaultValue) : parseFloat(defaultValue);
-                } else if (propType === 'boolean') {
-                    prop.default = defaultValue.toLowerCase() === 'true';
-                } else {
-                    prop.default = defaultValue;
-                }
+            if (el('prop_' + originalPropName + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + originalPropName).value !== '') {
+                const dv = el('propDefault_' + originalPropName).value;
+                if (propType === 'integer') prop.default = parseInt(dv);
+                else if (propType === 'number') prop.default = parseFloat(dv);
+                else if (propType === 'boolean') prop.default = dv.toLowerCase() === 'true';
+                else prop.default = dv;
             }
-            // Handle example value
-            if (el('prop_' + propId + 'ExampleGroup').style.display !== 'none' && el('propExample_' + propId).value !== '') {
-                const exampleValue = el('propExample_' + propId).value;
-                // Try to parse as appropriate type
-                if (propType === 'number' || propType === 'integer') {
-                    prop.example = propType === 'integer' ? parseInt(exampleValue) : parseFloat(exampleValue);
-                } else if (propType === 'boolean') {
-                    prop.example = exampleValue.toLowerCase() === 'true';
-                } else {
-                    prop.example = exampleValue;
-                }
+            if (el('prop_' + originalPropName + 'ExampleGroup').style.display !== 'none' && el('propExample_' + originalPropName).value !== '') {
+                const ev = el('propExample_' + originalPropName).value;
+                 // Examples are often strings, but can be typed
+                if (propType === 'integer') prop.example = parseInt(ev);
+                else if (propType === 'number') prop.example = parseFloat(ev);
+                else if (propType === 'boolean') prop.example = ev.toLowerCase() === 'true';
+                else prop.example = ev;
             }
-            if (el('prop_' + propId + 'FormatGroup').style.display !== 'none' && el('prop_' + propId + 'Format').value) {
-                prop.format = el('prop_' + propId + 'Format').value;
+            if (el('prop_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('prop_' + originalPropName + 'Format').value) {
+                prop.format = el('prop_' + originalPropName + 'Format').value;
             }
-            if (el('prop_' + propId + 'StringValidationsGroup').style.display !== 'none') {
-                if (el('propPattern_' + propId).value) prop.pattern = el('propPattern_' + propId).value;
-                if (el('propMinLength_' + propId).value) prop.minLength = parseInt(el('propMinLength_' + propId).value);
-                if (el('propMaxLength_' + propId).value) prop.maxLength = parseInt(el('propMaxLength_' + propId).value);
+            if (el('prop_' + originalPropName + 'StringValidationsGroup').style.display !== 'none') {
+                if (el('propPattern_' + originalPropName).value) prop.pattern = el('propPattern_' + originalPropName).value;
+                if (el('propMinLength_' + originalPropName).value) prop.minLength = parseInt(el('propMinLength_' + originalPropName).value);
+                if (el('propMaxLength_' + originalPropName).value) prop.maxLength = parseInt(el('propMaxLength_' + originalPropName).value);
             }
-            if (el('prop_' + propId + 'NumberValidationsGroup').style.display !== 'none') {
-                if (el('propMinimum_' + propId).value) prop.minimum = parseFloat(el('propMinimum_' + propId).value);
-                if (el('propMaximum_' + propId).value) prop.maximum = parseFloat(el('propMaximum_' + propId).value);
+            if (el('prop_' + originalPropName + 'NumberValidationsGroup').style.display !== 'none') {
+                if (el('propMinimum_' + originalPropName).value) prop.minimum = parseFloat(el('propMinimum_' + originalPropName).value);
+                if (el('propMaximum_' + originalPropName).value) prop.maximum = parseFloat(el('propMaximum_' + originalPropName).value);
             }
             if (propType === 'array') {
                 prop.items = {};
-                const itemsType = el('propItemsType_' + propId).value;
+                const itemsType = el('propItemsType_' + originalPropName).value;
                 if (itemsType === 'schema') {
-                    const ref = el('propItemsModelSelect_' + propId).value;
-                    if (ref) {
-                        prop.items.$ref = ref;
-                    } else {
-                        prop.items.type = 'object';
-                    }
+                    const ref = el('propItemsModelSelect_' + originalPropName).value;
+                    if (ref) prop.items.$ref = ref; else prop.items.type = 'object';
                 } else {
                     prop.items.type = itemsType;
-                    if (el('propItems_' + propId + 'FormatGroup').style.display !== 'none' && el('propItems_' + propId + 'Format').value) {
-                        prop.items.format = el('propItems_' + propId + 'Format').value;
+                    if (el('propItems_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('propItems_' + originalPropName + 'Format').value) {
+                        prop.items.format = el('propItems_' + originalPropName + 'Format').value;
                     }
                 }
-                if (el('propItems_' + propId + 'EnumGroup').style.display !== 'none') {
-                    const en = collectEnumValuesFromChips('propItemsEnumContainer_' + propId);
+                if (el('propItems_' + originalPropName + 'EnumGroup').style.display !== 'none') {
+                    const en = collectEnumValuesFromChips('propItems_' + originalPropName + 'EnumContainer');
                     if (en.length > 0) prop.items.enum = en;
                 }
-            } else if (propType === 'string' && el('prop_' + propId + 'EnumGroup').style.display !== 'none') {
-                const en = collectEnumValuesFromChips('prop_' + propId + 'EnumContainer');
+            } else if (propType === 'string' && el('prop_' + originalPropName + 'EnumGroup').style.display !== 'none') {
+                const en = collectEnumValuesFromChips('prop_' + originalPropName + 'EnumContainer');
                 if (en.length > 0) prop.enum = en;
+            }
+
+            // Handle additionalProperties for object type
+            if (propType === 'object') {
+                const additionalPropsModeSelect = el('propAdditionalPropsMode_' + originalPropName);
+                if (additionalPropsModeSelect) {
+                    const mode = additionalPropsModeSelect.value;
+                    if (mode === 'true') {
+                        prop.additionalProperties = true;
+                    } else if (mode === 'false') {
+                        prop.additionalProperties = false;
+                    } else if (mode === 'schema') {
+                        const apSchema = {};
+                        const apType = el('propAdditionalPropsType_' + originalPropName).value;
+                        if (apType === 'schema') {
+                            const ref = el('propAdditionalPropsModelSelect_' + originalPropName).value;
+                            if (ref) apSchema.$ref = ref; else apSchema.type = 'object';
+                        } else {
+                            apSchema.type = apType;
+                            if (el('propAdditionalProps_' + originalPropName + '_FormatGroup').style.display !== 'none' && el('propAdditionalProps_' + originalPropName + '_Format').value) {
+                                apSchema.format = el('propAdditionalProps_' + originalPropName + '_Format').value;
+                            }
+                            if (apType === 'string' && el('propAdditionalProps_' + originalPropName + '_EnumGroup').style.display !== 'none') {
+                               const en = collectEnumValuesFromChips('propAdditionalProps_' + originalPropName + '_EnumContainer');
+                               if (en.length > 0) apSchema.enum = en;
+                            }
+                        }
+                        prop.additionalProperties = apSchema;
+                    } else { // mode === 'not_set'
+                        delete prop.additionalProperties;
+                    }
+                } else {
+                    delete prop.additionalProperties; // Control not found, ensure it's not saved
+                }
+            } else { // Not an object, so no additionalProperties
+                 delete prop.additionalProperties;
             }
         }
         properties[currentPropName] = prop;
@@ -372,15 +405,25 @@ function saveModelSilent() {
     
     if (oldModelName !== newModelName) {
         if (swaggerDoc.definitions[newModelName]) {
-            console.warn('Auto-save skipped: Model name already exists');
+            console.warn('Auto-save skipped: Model name already exists. Reverting UI name.');
+            el('modelNameInput').value = oldModelName; // Revert name in UI
             return;
         }
         delete swaggerDoc.definitions[oldModelName];
+        // TODO: Add logic to update $refs if rename occurs
+        console.warn(`Model "${oldModelName}" renamed to "${newModelName}". Existing $refs pointing to the old name are NOT automatically updated.`);
+
     }
     
     swaggerDoc.definitions[newModelName] = modelData;
     currentModel = newModelName;
     updateModelsList(el('searchInput').value);
+    // Update editor title if it changed
+    const modelEditorContent = el('modelEditorContent');
+    if (modelEditorContent) {
+        const titleElement = modelEditorContent.querySelector('h2');
+        if (titleElement) titleElement.textContent = 'Editing Model: ' + newModelName;
+    }
 }
 
 function saveSecurityDefinitionSilent() {
@@ -421,15 +464,24 @@ function saveSecurityDefinitionSilent() {
     
     if (oldDefName !== newDefName) {
         if (swaggerDoc.securityDefinitions[newDefName]) {
-            console.warn('Auto-save skipped: Security definition name already exists');
+            console.warn('Auto-save skipped: Security definition name already exists. Reverting UI name.');
+            el('securityDefNameInput').value = oldDefName;
             return;
         }
         delete swaggerDoc.securityDefinitions[oldDefName];
+        // TODO: Update references in endpoint.security
+        console.warn(`Security Definition "${oldDefName}" renamed to "${newDefName}". Existing references in endpoints are NOT automatically updated.`);
     }
     
     swaggerDoc.securityDefinitions[newDefName] = defData;
     currentSecurityDefinitionName = newDefName;
     updateSecurityDefinitionsList(el('searchInput').value);
+    // Update editor title
+    const secDefEditorContent = el('securityDefinitionEditorContent');
+    if (secDefEditorContent) {
+        const titleElement = secDefEditorContent.querySelector('h2');
+        if (titleElement) titleElement.textContent = 'Editing Security Definition: ' + newDefName;
+    }
 }
 
 // Auto-save cleanup functions
@@ -440,13 +492,6 @@ function cleanupAutoSave(editorType) {
     }
 }
 
-// Function to cleanup auto-save when switching editors
-function cleanupAutoSave(editorType) {
-    if (autoSaveTimers[editorType]) {
-        clearTimeout(autoSaveTimers[editorType]);
-        autoSaveTimers[editorType] = null;
-    }
-}
 
 function cleanupAllAutoSave() {
     Object.keys(autoSaveTimers).forEach(editorType => {
@@ -462,6 +507,9 @@ window.AutoSave = {
     setupEndpoint: setupEndpointAutoSave,
     setupModel: setupModelAutoSave,
     setupSecurityDefinition: setupSecurityDefinitionAutoSave,
+    saveModelSilent: saveModelSilent, // Expose for direct calls if needed
+    saveEndpointSilent: saveEndpointSilent,
+    saveSecurityDefinitionSilent: saveSecurityDefinitionSilent,
     cleanup: cleanupAutoSave,
     cleanupAll: cleanupAllAutoSave,
     showStatus: showSaveStatus

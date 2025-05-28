@@ -250,10 +250,12 @@ function getTypeOptions(selectedValue = 'string', includeSchema = false) {
     let options = commonTypes.map(t => `<option value="${t}" ${selectedValue === t ? 'selected' : ''}>${t}</option>`).join('');
     if (includeSchema) {
         const isRefSelected = typeof selectedValue === 'string' && selectedValue.startsWith('#/definitions/');
+        // If selectedValue is 'schema' (meaning it's a direct reference) or if it's an actual $ref string
         options += `<option value="schema" ${isRefSelected || selectedValue === 'schema' ? 'selected' : ''}>Model/Schema ($ref)</option>`;
     }
     return options;
 }
+
 
 function handleModelRefChange(selectElement) {
     const selectId = selectElement.id;
@@ -263,6 +265,8 @@ function handleModelRefChange(selectElement) {
     else if (selectId.startsWith('responseSchema')) { buttonId = `goToModelBtnResponse${selectId.substring('responseSchema'.length)}`; }
     else if (selectId.startsWith('propModelSelect_')) { buttonId = `goToModelBtnProp_${selectId.substring('propModelSelect_'.length)}`; }
     else if (selectId.startsWith('propItemsModelSelect_')) { buttonId = `goToModelBtnPropItems_${selectId.substring('propItemsModelSelect_'.length)}`; }
+    else if (selectId.startsWith('propAdditionalPropsModelSelect_')) { buttonId = `goToModelBtnPropAdditionalProps_${selectId.substring('propAdditionalPropsModelSelect_'.length)}`;} // Added for additionalProperties
+    
     const goToBtn = buttonId ? el(buttonId) : null;
     if (goToBtn) { goToBtn.style.display = selectElement.value ? 'inline-block' : 'none'; }
 }

@@ -283,7 +283,6 @@ function collectEndpointDataFromForm() {
         const schemaRef = schemaRefEl ? schemaRefEl.value : '';
         if (schemaRef) resp.schema = { $ref: schemaRef };
         qa('#responseHeadersContainer' + code + ' .header-item').forEach(hItem => {
-            // Correctly extract header name from hItem.id
             const hName = hItem.id.substring(('headerItem_' + code + '_').length);
             const hDescEl = el('headerDescription_' + code + '_' + hName);
             const hTypeEl = el('headerType_' + code + '_' + hName);
@@ -294,19 +293,17 @@ function collectEndpointDataFromForm() {
             if (hDef.type === 'array') {
                 const hItemsTypeEl = el('headerItemsType_' + code + '_' + hName);
                 hDef.items = { type: hItemsTypeEl ? hItemsTypeEl.value : 'string' };
-                 // Potentially add format for array items if it's part of your UI for header items
-                const hItemsFormatEl = el('headerItemsFormat_' + code + '_' + hName); // Assuming such an ID exists
+                const hItemsFormatEl = el('headerItemsFormat_' + code + '_' + hName); 
                 if (hItemsFormatEl && hItemsFormatEl.value) {
                     hDef.items.format = hItemsFormatEl.value;
                 }
             } else {
-                // Potentially add format for simple type headers if it's part of your UI
-                const hFormatEl = el('headerFormat_' + code + '_' + hName); // Assuming such an ID exists
+                const hFormatEl = el('headerFormat_' + code + '_' + hName); 
                 if (hFormatEl && hFormatEl.value) {
                     hDef.format = hFormatEl.value;
                 }
             }
-            if(hName) { // Ensure hName is not empty
+            if(hName) { 
                  resp.headers[hName] = hDef;
             }
         }); 
@@ -354,65 +351,137 @@ function saveEndpoint() {
 
 function saveModel() {
     if (!currentModel) { alert("No model selected."); return; }
-    const oldModelName = currentModel, newModelName = el('modelNameInput').value;
+    const oldModelName = currentModel;
+    const newModelName = el('modelNameInput').value;
     const modelDescription = el('modelDescription').value;
     if (!newModelName || !/^[a-zA-Z0-9_.-]+$/.test(newModelName)) { alert('Invalid model name.'); el('modelNameInput').value = oldModelName; return; }
-    const properties = {}, required = [];    qa('#propertiesList .property-item').forEach(item => {
-        const propIdInput = q('input[id^="propName_"]', item); // Find the input field for the property name
+    
+    const properties = {};
+    const required = [];
+    
+    qa('#propertiesList .property-item').forEach(item => {
+        const propIdInput = q('input[id^="propName_"]', item);
         if (!propIdInput) return;
-        const originalPropName = propIdInput.id.substring('propName_'.length); // This is the original name used for other element IDs
-        const currentPropName = propIdInput.value;  // This is the current (potentially edited) name
-
+        const originalPropName = propIdInput.id.substring('propName_'.length);
+        const currentPropName = propIdInput.value;
         if (!currentPropName) return;
-
-        const prop = { description: el('propDescription_' + originalPropName).value }; 
-        if (el('propRequired_' + originalPropName).checked) required.push(currentPropName);
+        
+        const prop = { description: el('propDescription_' + originalPropName).value };
+        if (el('propRequired_' + originalPropName).checked) {
+            required.push(currentPropName);
+        }
         
         const propType = el('propType_' + originalPropName).value;
-        if (propType === 'schema') { 
-            const ref = el('propModelSelect_' + originalPropName).value; 
-            if (ref) prop.$ref = ref; else prop.type = 'object'; 
+        if (propType === 'schema') {
+            const ref = el('propModelSelect_' + originalPropName).value;
+            if (ref) prop.$ref = ref; else prop.type = 'object';
         } else {
             prop.type = propType;
             if (el('prop_' + originalPropName + 'DefaultGroup').style.display !== 'none' && el('propDefault_' + originalPropName).value !== '') {
-                const defaultValue = el('propDefault_' + originalPropName).value;
-                if (propType === 'number' || propType === 'integer') {
-                    prop.default = propType === 'integer' ? parseInt(defaultValue) : parseFloat(defaultValue);
-                } else if (propType === 'boolean') {
-                    prop.default = defaultValue.toLowerCase() === 'true';
-                } else {
-                    prop.default = defaultValue;
-                }
+                const dv = el('propDefault_' + originalPropName).value;
+                if (propType === 'integer') prop.default = parseInt(dv);
+                else if (propType === 'number') prop.default = parseFloat(dv);
+                else if (propType === 'boolean') prop.default = dv.toLowerCase() === 'true';
+                else prop.default = dv;
             }
             if (el('prop_' + originalPropName + 'ExampleGroup').style.display !== 'none' && el('propExample_' + originalPropName).value !== '') {
-                const exampleValue = el('propExample_' + originalPropName).value;
-                if (propType === 'number' || propType === 'integer') {
-                    prop.example = propType === 'integer' ? parseInt(exampleValue) : parseFloat(exampleValue);
-                } else if (propType === 'boolean') {
-                    prop.example = exampleValue.toLowerCase() === 'true';
-                } else {
-                    prop.example = exampleValue;
-                }
+                const ev = el('propExample_' + originalPropName).value;
+                if (propType === 'integer') prop.example = parseInt(ev);
+                else if (propType === 'number') prop.example = parseFloat(ev);
+                else if (propType === 'boolean') prop.example = ev.toLowerCase() === 'true';
+                else prop.example = ev;
             }
-            if (el('prop_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('prop_' + originalPropName + 'Format').value) prop.format = el('prop_' + originalPropName + 'Format').value;
-            if (el('prop_' + originalPropName + 'StringValidationsGroup').style.display !== 'none') { if(el('propPattern_' + originalPropName).value) prop.pattern = el('propPattern_' + originalPropName).value; if(el('propMinLength_' + originalPropName).value) prop.minLength = parseInt(el('propMinLength_' + originalPropName).value); if(el('propMaxLength_' + originalPropName).value) prop.maxLength = parseInt(el('propMaxLength_' + originalPropName).value); }
-            if (el('prop_' + originalPropName + 'NumberValidationsGroup').style.display !== 'none') { if(el('propMinimum_' + originalPropName).value) prop.minimum = parseFloat(el('propMinimum_' + originalPropName).value); if(el('propMaximum_' + originalPropName).value) prop.maximum = parseFloat(el('propMaximum_' + originalPropName).value); }
+            if (el('prop_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('prop_' + originalPropName + 'Format').value) {
+                prop.format = el('prop_' + originalPropName + 'Format').value;
+            }
+            if (el('prop_' + originalPropName + 'StringValidationsGroup').style.display !== 'none') {
+                if (el('propPattern_' + originalPropName).value) prop.pattern = el('propPattern_' + originalPropName).value;
+                if (el('propMinLength_' + originalPropName).value) prop.minLength = parseInt(el('propMinLength_' + originalPropName).value);
+                if (el('propMaxLength_' + originalPropName).value) prop.maxLength = parseInt(el('propMaxLength_' + originalPropName).value);
+            }
+            if (el('prop_' + originalPropName + 'NumberValidationsGroup').style.display !== 'none') {
+                if (el('propMinimum_' + originalPropName).value) prop.minimum = parseFloat(el('propMinimum_' + originalPropName).value);
+                if (el('propMaximum_' + originalPropName).value) prop.maximum = parseFloat(el('propMaximum_' + originalPropName).value);
+            }
             if (propType === 'array') {
-                prop.items = {}; const itemsType = el('propItemsType_' + originalPropName).value;
-                if (itemsType === 'schema') { const ref = el('propItemsModelSelect_' + originalPropName).value; if (ref) prop.items.$ref = ref; else prop.items.type = 'object'; }
-                else { prop.items.type = itemsType; if (el('propItems_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('propItems_' + originalPropName + 'Format').value) prop.items.format = el('propItems_' + originalPropName + 'Format').value; }
-                if (el('propItems_' + originalPropName + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('propItemsEnumContainer_' + originalPropName); if (en.length > 0) prop.items.enum = en; }
-            } else if (propType === 'string' && el('prop_' + originalPropName + 'EnumGroup').style.display !== 'none') { const en = collectEnumValuesFromChips('prop_' + originalPropName + 'EnumContainer'); if (en.length > 0) prop.enum = en; }
+                prop.items = {};
+                const itemsType = el('propItemsType_' + originalPropName).value;
+                if (itemsType === 'schema') {
+                    const ref = el('propItemsModelSelect_' + originalPropName).value;
+                    if (ref) prop.items.$ref = ref; else prop.items.type = 'object';
+                } else {
+                    prop.items.type = itemsType;
+                    if (el('propItems_' + originalPropName + 'FormatGroup').style.display !== 'none' && el('propItems_' + originalPropName + 'Format').value) {
+                        prop.items.format = el('propItems_' + originalPropName + 'Format').value;
+                    }
+                }
+                if (el('propItems_' + originalPropName + 'EnumGroup').style.display !== 'none') {
+                    const en = collectEnumValuesFromChips('propItems_' + originalPropName + 'EnumContainer');
+                    if (en.length > 0) prop.items.enum = en;
+                }
+            } else if (propType === 'string' && el('prop_' + originalPropName + 'EnumGroup').style.display !== 'none') {
+                const en = collectEnumValuesFromChips('prop_' + originalPropName + 'EnumContainer');
+                if (en.length > 0) prop.enum = en;
+            }
+
+            // Handle additionalProperties for object type
+            if (propType === 'object') {
+                const additionalPropsModeSelect = el('propAdditionalPropsMode_' + originalPropName);
+                if (additionalPropsModeSelect) {
+                    const mode = additionalPropsModeSelect.value;
+                    if (mode === 'true') {
+                        prop.additionalProperties = true;
+                    } else if (mode === 'false') {
+                        prop.additionalProperties = false;
+                    } else if (mode === 'schema') {
+                        const apSchema = {};
+                        const apType = el('propAdditionalPropsType_' + originalPropName).value;
+                        if (apType === 'schema') {
+                            const ref = el('propAdditionalPropsModelSelect_' + originalPropName).value;
+                            if (ref) apSchema.$ref = ref; else apSchema.type = 'object';
+                        } else {
+                            apSchema.type = apType;
+                            if (el('propAdditionalProps_' + originalPropName + '_FormatGroup').style.display !== 'none' && el('propAdditionalProps_' + originalPropName + '_Format').value) {
+                                apSchema.format = el('propAdditionalProps_' + originalPropName + '_Format').value;
+                            }
+                             if (apType === 'string' && el('propAdditionalProps_' + originalPropName + '_EnumGroup').style.display !== 'none') {
+                               const en = collectEnumValuesFromChips('propAdditionalProps_' + originalPropName + '_EnumContainer');
+                               if (en.length > 0) apSchema.enum = en;
+                            }
+                        }
+                        prop.additionalProperties = apSchema;
+                    } else { // mode === 'not_set' or invalid
+                        delete prop.additionalProperties;
+                    }
+                } else {
+                    delete prop.additionalProperties; // Control not found, ensure it's not in swaggerDoc
+                }
+            } else { // Not an object, so no additionalProperties
+                 delete prop.additionalProperties;
+            }
         }
         properties[currentPropName] = prop;
     });
-    const modelData = { type: 'object', description: modelDescription, properties: properties }; if (required.length > 0) modelData.required = required;
+    
+    const modelData = { type: 'object', description: modelDescription, properties: properties };
+    if (required.length > 0) modelData.required = required;
+    
     if (oldModelName !== newModelName) {
-        if (swaggerDoc.definitions[newModelName]) { alert('Error: Model "' + newModelName + '" already exists.'); el('modelNameInput').value = oldModelName; return; } // Corrected alert
-        delete swaggerDoc.definitions[oldModelName]; console.warn('Model "' + oldModelName + '" renamed to "' + newModelName + '". $refs not updated.'); // Corrected console.warn
+        if (swaggerDoc.definitions[newModelName]) {
+            alert('Error: Model "' + newModelName + '" already exists.');
+            el('modelNameInput').value = oldModelName; // Revert name in UI
+            return;
+        }
+        delete swaggerDoc.definitions[oldModelName];
+        // TODO: Add logic to update $refs if rename occurs
+        console.warn(`Model "${oldModelName}" renamed to "${newModelName}". Existing $refs pointing to the old name are NOT automatically updated.`);
     }
-    swaggerDoc.definitions[newModelName] = modelData; currentModel = newModelName;
-    updateModelsList(el('searchInput').value); selectModel(newModelName); alert('Model saved!');
+    
+    swaggerDoc.definitions[newModelName] = modelData;
+    currentModel = newModelName;
+    updateModelsList(el('searchInput').value);
+    selectModel(newModelName);
+    alert('Model saved!');
 }
 
 function saveSecurityDefinition() {
@@ -430,7 +499,9 @@ function saveSecurityDefinition() {
     }
     if (oldDefName !== newDefName) {
         if (swaggerDoc.securityDefinitions[newDefName]) { alert('Error: Security definition "' + newDefName + '" already exists.'); el('securityDefNameInput').value = oldDefName; return; } // Corrected alert
-        delete swaggerDoc.securityDefinitions[oldDefName]; console.warn('Security def "' + oldDefName + '" renamed to "' + newDefName + '". Refs not updated.'); // Corrected console.warn
+        delete swaggerDoc.securityDefinitions[oldDefName]; 
+        // TODO: Update references in endpoint.security
+        console.warn('Security def "' + oldDefName + '" renamed to "' + newDefName + '". Refs not updated.'); // Corrected console.warn
     }
     swaggerDoc.securityDefinitions[newDefName] = defData; currentSecurityDefinitionName = newDefName;
     updateSecurityDefinitionsList(el('searchInput').value); selectSecurityDefinition(newDefName); alert('Security definition saved!');
@@ -453,7 +524,12 @@ async function normalizeAndResaveAll() {
 
     try {
         // 2. Process General Info
-        saveGeneralInfoSilent();
+        if (window.AutoSave && window.AutoSave.saveGeneralInfoSilent) { // Check if function exists
+             window.AutoSave.saveGeneralInfoSilent();
+        } else { // Fallback or direct call if AutoSave object is structured differently
+            saveGeneralInfoSilent(); // Assuming global scope or imported correctly
+        }
+
 
         // 3. Process Endpoints
         const allEndpoints = [];
@@ -463,25 +539,34 @@ async function normalizeAndResaveAll() {
             }
         }
         for (const ep of allEndpoints) {
-            _selectEndpointUI(ep.path, ep.method); // Sets currentEndpoint, renders editor
-            // await new Promise(resolve => setTimeout(resolve, 5)); // Small delay for DOM, if needed
-            saveEndpointSilent(); // Uses collectEndpointDataFromForm on the rendered editor
+            _selectEndpointUI(ep.path, ep.method); 
+            if (window.AutoSave && window.AutoSave.saveEndpointSilent) {
+                window.AutoSave.saveEndpointSilent();
+            } else {
+                 saveEndpointSilent();
+            }
         }
 
         // 4. Process Models
         const allModels = Object.keys(swaggerDoc.definitions || {});
         for (const modelName of allModels) {
-            _selectModelUI(modelName); // Sets currentModel, renders editor
-            // await new Promise(resolve => setTimeout(resolve, 5));
-            saveModelSilent();
+            _selectModelUI(modelName); 
+            if (window.AutoSave && window.AutoSave.saveModelSilent) {
+                 window.AutoSave.saveModelSilent();
+            } else {
+                saveModelSilent();
+            }
         }
 
         // 5. Process Security Definitions
         const allSecDefs = Object.keys(swaggerDoc.securityDefinitions || {});
         for (const defName of allSecDefs) {
-            _selectSecurityDefinitionUI(defName); // Sets currentSecurityDefinitionName, renders editor
-            // await new Promise(resolve => setTimeout(resolve, 5));
-            saveSecurityDefinitionSilent();
+            _selectSecurityDefinitionUI(defName);
+            if (window.AutoSave && window.AutoSave.saveSecurityDefinitionSilent) {
+                window.AutoSave.saveSecurityDefinitionSilent();
+            } else {
+                saveSecurityDefinitionSilent();
+            }
         }
 
     } catch (error) {
@@ -493,13 +578,9 @@ async function normalizeAndResaveAll() {
         window.AutoSave.config.enableOnBlur = autoSaveBlur;
         isBatchProcessing = false;
 
-        // Restore original view without adding to history from the loop
-        // _restoreUIFromState will call the appropriate _selectXYZUI function
-        // which in turn handles UI update and auto-save setup for the restored view.
         isRestoringStateFromPop = true; 
         _restoreUIFromState(originalState);
         
-        // Explicitly replace history state to the original one
         let originalHash = 'info';
         let originalTitle = "General Info";
         if (originalState.type === 'endpoint') {
